@@ -1,16 +1,16 @@
 # PBP-Project
 
-#Deskripsi
+# Deskripsi
 SisaBijak adalah platform marketplace food rescue berbasis Django yang menghubungkan toko roti dan cafe lokal dengan mahasiswa atau pekerja yang lagi nyari makanan berkualitas dengan harga miring.
 
-#Anggota Kelompok
+# Anggota Kelompok
 1. Debora Putri Dion Simamora (2506544126)
 2. Jefry Acmal Dzikhrullah  (2506614795)
 3. Khalisha Nalani Chandra (2506625041)
 4. Rafael Darius Sagala (2506584275)
 5. Ghaisan Nabil Iradat (2506619051)
 
-#Fitur
+# Fitur
 1. Mystery Box Marketplace & Catalog
 Tempat pembeli (mahasiswa/pekerja) bisa ngeliat dan milih paket Mystery Box dari resto/cafe terdekat yang lagi diskon gede (50-70%) pas mau tutup toko.
 2. Merchant Inventory & Pickup Manager
@@ -22,13 +22,13 @@ Dashboard analisis buat ngeliat statistik total makanan yang berhasil diselamatk
 5. Merchant Location Integrator
 Peta lokasi interaktif buat nampilin titik-titik cafe/toko mitra. terdekat dari posisi pengguna.
 
-#Roles
+# Roles
 <kbd>Guest</kbd> 
 <kbd>Consumer</kbd> 
 <kbd>Restaurant</kbd> 
 <kbd>Admin</kbd>
 
-#Pembagian Job Desk
+# Pembagian Job Desk
 <kbd>Mystery Box Marketplace & Catalog</kbd> : Debora Putri Dion Simamora
 <kbd>Merchant Inventory & Pickup Manager</kbd> : Jefry Acmal Dzikhrullah
 <kbd>Order Validation & Claim System</kbd> : Rafael Darius Sagala
