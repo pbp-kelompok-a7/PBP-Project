@@ -23,14 +23,15 @@ Dashboard analisis buat ngeliat statistik total makanan yang berhasil diselamatk
 Peta lokasi interaktif buat nampilin titik-titik cafe/toko mitra. terdekat dari posisi pengguna.
 
 # Roles
-<kbd>Guest</kbd> 
-<kbd>Consumer</kbd> 
-<kbd>Restaurant</kbd> 
-<kbd>Admin</kbd>
+- `Guest`
+- `Consumer`
+- `Restaurant`
+- `Admin`
 
 # Pembagian Job Desk
-<kbd>Mystery Box Marketplace & Catalog</kbd><br> : Debora Putri Dion Simamora
-<kbd>Merchant Inventory & Pickup Manager</kbd><br> : Jefry Acmal Dzikhrullah
-<kbd>Order Validation & Claim System</kbd><br> : Rafael Darius Sagala
-<kbd>Carbon & Food Rescue Impact Analytics</kbd><br> : Khalisha Nalani Chandra
-<kbd>Merchant Location Integrator</kbd><br> : Ghaisan Nabil Iradat
+-`Mystery Box Marketplace & Catalog` : Debora Putri Dion Simamora
+-`Merchant Inventory & Pickup Manager` : Jefry Acmal Dzikhrullah
+-`Order Validation & Claim System` : Rafael Darius Sagala
+-`Carbon & Food Rescue Impact Analytics` : Khalisha Nalani Chandra
+-`Merchant Location Integrator` : Ghaisan Nabil Iradat
+
