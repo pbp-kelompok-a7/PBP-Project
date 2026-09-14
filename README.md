@@ -29,8 +29,8 @@ Peta lokasi interaktif buat nampilin titik-titik cafe/toko mitra. terdekat dari 
 <kbd>Admin</kbd>
 
 # Pembagian Job Desk
-<kbd>Mystery Box Marketplace & Catalog</kbd> : Debora Putri Dion Simamora
-<kbd>Merchant Inventory & Pickup Manager</kbd> : Jefry Acmal Dzikhrullah
-<kbd>Order Validation & Claim System</kbd> : Rafael Darius Sagala
-<kbd>Carbon & Food Rescue Impact Analytics</kbd> : Khalisha Nalani Chandra
-<kbd>Merchant Location Integrator</kbd> : Ghaisan Nabil Iradat
+<kbd>Mystery Box Marketplace & Catalog</kbd><br> : Debora Putri Dion Simamora
+<kbd>Merchant Inventory & Pickup Manager</kbd><br> : Jefry Acmal Dzikhrullah
+<kbd>Order Validation & Claim System</kbd><br> : Rafael Darius Sagala
+<kbd>Carbon & Food Rescue Impact Analytics</kbd><br> : Khalisha Nalani Chandra
+<kbd>Merchant Location Integrator</kbd><br> : Ghaisan Nabil Iradat
