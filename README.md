@@ -11,10 +11,12 @@ SisaBijak adalah platform marketplace food rescue berbasis Django yang menghubun
 5. Ghaisan Nabil Iradat (2506619051)
 
 # Fitur
-1. Mystery Box Marketplace & Catalog
+### 1. Modul Mystery Box Marketplace & Catalog
 Tempat pembeli (mahasiswa/pekerja) bisa ngeliat dan milih paket Mystery Box dari resto/cafe terdekat yang lagi diskon gede (50-70%) pas mau tutup toko.
 
-### Modul Merchant Inventory & Pickup Manager
+### 2. Modul Merchant Inventory & Pickup Manager
+**Penanggung Jawab** : Jefry Acmal Dzikhrullah
+
 **Models:**
 * Merchant Inventory
 
@@ -42,13 +44,15 @@ Tempat pembeli (mahasiswa/pekerja) bisa ngeliat dan milih paket Mystery Box dari
 
 * inventory_list.html
 * inventory_form.html
-* merchant_dashboard.html
+* merchant_dashboard.html 
 
-3. Order Validation & Claim System
+### 3. Modul Order Validation & Claim System
 Sistem pesanan yang bakal ngeluarin kode unik/QR Code buat ditunjukin ke kasir toko pas pembeli ngambil makanannya di lokasi.
-4. Carbon & Food Rescue Impact Analytics
+
+### 4. Modul Carbon & Food Rescue Impact Analytics
 Dashboard analisis buat ngeliat statistik total makanan yang berhasil diselamatkan plus estimasi emisi CO2 yang berhasil dicegah (pake API).
-5. Merchant Location Integrator
+
+### 5. Modul Merchant Location Integrator
 Peta lokasi interaktif buat nampilin titik-titik cafe/toko mitra. terdekat dari posisi pengguna.
 
 # Roles
