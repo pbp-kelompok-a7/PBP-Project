@@ -53,7 +53,22 @@ Sistem pesanan yang bakal ngeluarin kode unik/QR Code buat ditunjukin ke kasir t
 Dashboard analisis buat ngeliat statistik total makanan yang berhasil diselamatkan plus estimasi emisi CO2 yang berhasil dicegah (pake API).
 
 ### 5. Modul Merchant Location Integrator
-Peta lokasi interaktif buat nampilin titik-titik cafe/toko mitra. terdekat dari posisi pengguna.
+**Penanggung Jawab** : Ghaisan Nabil Iradat
+
+**Models:**
+* merchant location integrator
+  * id_merchant
+  * name_merchant
+  * address
+  * longitude
+  * latitude
+
+**Views:**
+
+* merchant_location() : Sebagai penghubung, mengambil data untuk rendering
+
+**Template:**
+* merchant_loc.html
 
 # Roles
 - `Guest`
