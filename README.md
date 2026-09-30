@@ -47,7 +47,55 @@ Tempat pembeli (mahasiswa/pekerja) bisa ngeliat dan milih paket Mystery Box dari
 * merchant_dashboard.html 
 
 ### 3. Modul Order Validation & Claim System
+
+**Penanggung Jawab** : Rafael Darius Sagala
+
+**Deskripsi Fitur:**
 Sistem pesanan yang bakal ngeluarin kode unik/QR Code buat ditunjukin ke kasir toko pas pembeli ngambil makanannya di lokasi.
+
+**Models:**
+* Order
+  * consumer : ForeignKey(User), pembeli yang melakukan klaim
+  * inventory : ForeignKey(MerchantInventory), paket Mystery Box yang diklaim
+  * quantity : PositiveIntegerField, jumlah paket
+  * unit_price : DecimalField, snapshot harga diskon saat pesanan dibuat
+  * total_price : DecimalField, unit_price × quantity
+  * claim_code : CharField (unique), kode klaim 8 karakter yang dibuat otomatis
+  * status : CharField, pilihan `pending`, `completed`, `cancelled`, `expired`
+  * pickup_deadline : DateTimeField, batas waktu penjemputan (dari jam selesai pickup paket)
+  * created_at : DateTimeField, waktu pesanan dibuat
+  * picked_up_at : DateTimeField, waktu pesanan divalidasi kasir
+  * validated_by : ForeignKey(User, null=True), akun Restaurant yang memvalidasi
+
+**Views:**
+
+*Consumer*
+* claim_create_view(request, inventory_id) : konfirmasi dan pembuatan pesanan, dengan pengurangan stok atomik
+* order_list_view(request) : daftar riwayat pesanan milik consumer
+* order_detail_view(request, pk) : detail pesanan beserta QR Code dan kode klaim
+* order_cancel_view(request, pk) : membatalkan pesanan `pending` dan mengembalikan stok
+
+*Restaurant / Kasir*
+* merchant_order_list_view(request) : daftar pesanan masuk (menunggu diambil) dan riwayat toko
+* validate_order_view(request) : input kode atau scan QR, tampilkan detail pesanan, lalu konfirmasi pengambilan
+
+**Aturan Validasi:**
+* Satu kode hanya bisa divalidasi satu kali
+* Restaurant hanya bisa memvalidasi pesanan untuk paket miliknya sendiri
+* Pesanan yang melewati `pickup_deadline` ditolak dan berstatus `expired`
+* Stok dan status paket (`tersedia` / `habis`) ikut diperbarui saat klaim dan pembatalan
+
+**Templates:**
+* claim_form.html : halaman konfirmasi klaim Mystery Box
+* order_list.html : riwayat pesanan consumer
+* order_detail.html : detail pesanan dengan QR Code dan kode klaim
+* merchant_orders.html : dashboard pesanan masuk untuk Restaurant
+* validate_order.html : halaman validasi kode/QR untuk kasir
+
+**Integrasi Antar Modul:**
+* Modul Marketplace & Catalog : tombol "Klaim" mengarah ke `orders:claim`
+* Modul Merchant Inventory : membaca dan memperbarui `stok_harian` serta status paket
+* Modul Impact Analytics : `Order` dipakai sebagai relasi `ImpactLog`, dan signal `order_completed` dikirim saat pesanan divalidasi
 
 ### 4. Modul Carbon & Food Rescue Impact Analytics
 
