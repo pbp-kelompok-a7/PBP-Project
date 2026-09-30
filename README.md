@@ -50,6 +50,7 @@ Tempat pembeli (mahasiswa/pekerja) bisa ngeliat dan milih paket Mystery Box dari
 Sistem pesanan yang bakal ngeluarin kode unik/QR Code buat ditunjukin ke kasir toko pas pembeli ngambil makanannya di lokasi.
 
 ### 4. Modul Carbon & Food Rescue Impact Analytics
+
 **Penanggung Jawab** : Khalisha Nalani Chandra
 
 **Deskripsi Fitur:**
