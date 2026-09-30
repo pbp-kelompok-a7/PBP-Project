@@ -50,8 +50,38 @@ Tempat pembeli (mahasiswa/pekerja) bisa ngeliat dan milih paket Mystery Box dari
 Sistem pesanan yang bakal ngeluarin kode unik/QR Code buat ditunjukin ke kasir toko pas pembeli ngambil makanannya di lokasi.
 
 ### 4. Modul Carbon & Food Rescue Impact Analytics
-Dashboard analisis buat ngeliat statistik total makanan yang berhasil diselamatkan plus estimasi emisi CO2 yang berhasil dicegah (pake API).
+**Penanggung Jawab** : Khalisha Nalani Chandra
 
+**Deskripsi Fitur:**
+Interactive Gamified Analytics Dashboard & Eco-Impact Tracker untuk memvisualisasikan statistik penyelamatan makanan, mengkalkulasi milestone badges (gamifikasi), dan menampilkan estimasi pengurangan emisi CO₂ secara real-time (via AJAX / External API).
+
+**Models:**
+* UserEcoProfile
+  * user : OneToOneField(User), terhubung ke Consumer / Restaurant / Admin
+  * rescue_streak : IntegerField, jumlah hari berturut-turut melakukan aksi rescue
+  * eco_points : IntegerField, poin gamifikasi yang dikumpulkan pengguna
+  * sustainability_tier : CharField, level/gelar pengguna (misal: 'Eco Seed', 'Food Savior', 'Planet Hero')
+
+* ImpactLog
+  * user : ForeignKey(User), pengguna yang melakukan aksi penyelamatan makanan
+  * order : ForeignKey(Order, null=True), relasi ke transaksi Mystery Box yang berhasil diselamatkan
+  * weight_saved_kg : DecimalField, berat total makanan yang diselamatkan (kg)
+  * co2_prevented_kg : DecimalField, hasil kalkulasi reduksi emisi CO₂
+  * tree_equivalent : FloatField, metrik ekivalensi dampak (misal: setara menanam X pohon)
+  * created_at : DateTimeField, catatan waktu transaksi/aksi
+
+**Views & Endpoints:**
+
+* render_impact_hub(request) : menampilkan halaman utama dashboard analitik interaktif berisi visualisasi grafik, progres streak pengguna, dan lencana pencapaian (badges)
+* get_community_impact_stats_json(request) : endpoint JSON publik untuk data agregat komunitas secara real-time (total makanan diselamatkan & total CO₂ yang dicegah seluruh pengguna)
+* get_personal_analytics_json(request) : endpoint JSON terautentikasi untuk data time-series grafik mingguan/bulanan (render via Chart.js / ApexCharts)
+
+**Templates & Components:**
+
+* impact_hub.html : halaman utama dashboard dengan counter animasi, grafik tren Chart.js, dan infografis ekivalensi dampak karbon
+* components/eco_badge_modal.html : modal pop-up untuk merayakan pencapaian level/badge baru pengguna
+* components/impact_summary_widget.html : widget ringkasan dampak pribadi yang reusable, bisa ditempatkan di halaman profil Consumer atau Dashboard Merchant
+  
 ### 5. Modul Merchant Location Integrator
 **Penanggung Jawab** : Ghaisan Nabil Iradat
 
