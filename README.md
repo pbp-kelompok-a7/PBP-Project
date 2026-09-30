@@ -68,7 +68,6 @@ Sistem pesanan yang bakal ngeluarin kode unik/QR Code buat ditunjukin ke kasir t
   * validated_by : ForeignKey(User, null=True), akun Restaurant yang memvalidasi
 
 **Views:**
-
 *Consumer*
 * claim_create_view(request, inventory_id) : konfirmasi dan pembuatan pesanan, dengan pengurangan stok atomik
 * order_list_view(request) : daftar riwayat pesanan milik consumer
