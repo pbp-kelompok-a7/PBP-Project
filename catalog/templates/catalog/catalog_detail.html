@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ paket.nama_produk }} | SisaBijak</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-white text-black">
+
+  <main class="max-w-6xl mx-auto px-4 md:px-8 py-10">
+
+    <!-- breadcrumb -->
+    <p class="text-sm text-gray-500">
+      <a href="{% url 'catalog:catalog_list' %}" class="hover:underline">Marketplace</a> / {{ paket.nama_produk }}
+    </p>
+
+    <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-10">
+
+      <!-- foto paket -->
+      <div class="relative h-72 lg:h-[460px] bg-[#F3F0ED] border-2 border-black rounded-3xl flex items-center justify-center text-gray-400">
+        Package Photo
+        <span class="absolute top-5 left-5 bg-[#1A2827] text-white font-bold px-4 py-2 rounded-full">-{{ paket.diskon_persen }}%</span>
+      </div>
+
+      <!-- info paket -->
+      <div class="space-y-4">
+        <p class="text-gray-600 font-medium">{{ paket.nama_toko }}</p>
+        <h1 class="text-3xl md:text-4xl font-bold">{{ paket.nama_produk }}</h1>
+
+        <div class="flex items-center gap-3">
+          <span class="text-3xl font-bold">{{ paket.harga_diskon_str }}</span>
+          <span class="text-lg text-gray-400 line-through">{{ paket.harga_asli_str }}</span>
+          <span class="bg-[#E6F4E7] text-[#384739] text-sm font-medium px-3 py-1 rounded-full">Save {{ paket.diskon_persen }}%</span>
+        </div>
+
+        <p class="text-gray-700 leading-relaxed">{{ paket.deskripsi }}</p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="bg-[#E6F4E7] rounded-2xl p-4">
+            <p class="text-xs text-gray-600">Stock Left</p>
+            <p class="font-semibold">{{ paket.stok_harian }} boxes</p>
+          </div>
+          <div class="bg-[#ECF1F6] rounded-2xl p-4">
+            <p class="text-xs text-gray-600">Pickup Time</p>
+            <p class="font-semibold">{{ paket.jam_mulai_pickup }} – {{ paket.jam_selesai_pickup }}</p>
+          </div>
+          <div class="bg-[#F3F0ED] rounded-2xl p-4">
+            <p class="text-xs text-gray-600">Location</p>
+            <p class="font-semibold">{{ paket.alamat }}</p>
+          </div>
+        </div>
+
+        {% if paket.status == "tersedia" and paket.stok_harian > 0 %}
+          <!-- TODO: ganti href jadi {% templatetag openblock %} url 'orders:claim' paket.id {% templatetag closeblock %} kalau modul rafael udah ada -->
+          <a href="#" class="block text-center bg-black text-white font-semibold rounded-full py-4">Claim Mystery Box</a>
+          {% if not user.is_authenticated %}
+            <p class="text-sm text-gray-500">You need to log in as Consumer to claim this box.</p>
+          {% endif %}
+        {% else %}
+          <div class="text-center bg-gray-200 text-gray-500 font-semibold rounded-full py-4">Sold Out</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- bagian review, nanti diisi pas model Review udah dibikin -->
+    <hr class="my-10 border-gray-300">
+    <h2 class="text-2xl md:text-3xl font-bold">Reviews</h2>
+    <p class="mt-4 text-gray-500">No reviews yet.</p>
+  </main>
+</body>
+</html>
