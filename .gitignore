@@ -13,3 +13,6 @@ __pycache__/
 .vscode/*
 !.vscode/settings.json
 .idea/
+
+.coverage
+htmlcov/

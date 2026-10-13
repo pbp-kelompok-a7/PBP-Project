@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Review | SisaBijak</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-white text-black">
+
+  <main class="max-w-xl mx-auto px-4 py-10">
+
+    <p class="text-sm text-gray-500">
+      <a href="{% url 'catalog:catalog_list' %}" class="hover:underline">Marketplace</a> /
+      <a href="{% url 'catalog:catalog_detail' paket.id %}" class="hover:underline">{{ paket.nama_produk }}</a> /
+      Edit Review
+    </p>
+
+    <div class="mt-6 border-2 border-black rounded-3xl p-6 md:p-10 space-y-6">
+      <h1 class="text-2xl md:text-3xl font-bold">Edit Review</h1>
+
+      <!-- ringkasan paket yang direview -->
+      <div class="flex items-center gap-4 bg-[#EEF1F1] rounded-2xl p-4">
+        <div class="w-16 h-16 rounded-xl bg-[#F3F0ED]"></div>
+        <div>
+          <p class="font-semibold">{{ paket.nama_produk }}</p>
+          <p class="text-sm text-gray-600">{{ paket.nama_toko }}</p>
+        </div>
+      </div>
+
+      <form method="POST" class="space-y-5">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <p class="text-sm text-red-600">{{ form.non_field_errors|join:" " }}</p>
+        {% endif %}
+
+        <div>
+          <p class="text-sm font-semibold mb-2">Your rating</p>
+          <div class="flex gap-2">
+            {% for i in "12345" %}
+            <label class="cursor-pointer">
+              <input type="radio" name="rating" value="{{ i }}" class="peer sr-only" required
+                     {% if form.rating.value|stringformat:"s" == i %}checked{% endif %}>
+              <span class="w-12 h-12 flex items-center justify-center border border-gray-300 rounded-xl font-semibold peer-checked:bg-black peer-checked:text-white peer-checked:border-black">{{ i }}</span>
+            </label>
+            {% endfor %}
+          </div>
+          {% if form.rating.errors %}
+            <p class="mt-1 text-sm text-red-600">{{ form.rating.errors|join:" " }}</p>
+          {% endif %}
+        </div>
+
+        <div>
+          <p class="text-sm font-semibold mb-2">Your comment</p>
+          <textarea name="comment" rows="5" required
+                    class="w-full border border-gray-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-black">{{ form.comment.value|default:"" }}</textarea>
+          {% if form.comment.errors %}
+            <p class="mt-1 text-sm text-red-600">{{ form.comment.errors|join:" " }}</p>
+          {% endif %}
+        </div>
+
+        <div class="flex gap-3">
+          <a href="{% url 'catalog:catalog_detail' paket.id %}" class="flex-1 text-center border-2 border-black font-semibold rounded-full py-3">Cancel</a>
+          <button type="submit" class="flex-1 bg-black text-white font-semibold rounded-full py-3">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </main>
+</body>
+</html>

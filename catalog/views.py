@@ -1,5 +1,13 @@
+from django.contrib.auth.decorators import login_required
+from django.db.models import Avg
 from django.http import Http404, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.http import require_POST
+
+from catalog.forms import ReviewForm
+from catalog.models import Review
 
 # data dummy dulu, nanti diganti pake MerchantInventory punya jefry
 # nama field sengaja disamain sama README biar nanti gampang gantinya
@@ -125,6 +133,8 @@ DUMMY_PAKET = [
 ]
 
 
+# ================= fungsi bantuan =================
+
 def format_rupiah(angka):
     # 15000 -> Rp15.000
     return "Rp{:,}".format(angka).replace(",", ".")
@@ -137,6 +147,13 @@ def siapin_paket(paket):
     data["harga_asli_str"] = format_rupiah(paket["harga_asli"])
     data["harga_diskon_str"] = format_rupiah(paket["harga_diskon"])
     return data
+
+
+def cari_paket(inventory_id):
+    for paket in DUMMY_PAKET:
+        if paket["id"] == inventory_id:
+            return paket
+    return None
 
 
 def ambil_paket_tersedia():
@@ -172,6 +189,32 @@ def filter_paket(paket_list, keyword, harga):
     return hasil
 
 
+def ringkasan_rating(inventory_id):
+    # ngitung rata-rata rating sama jumlah review satu paket
+    reviews = Review.objects.filter(inventory_id=inventory_id)
+    rata = reviews.aggregate(rata=Avg("rating"))["rata"]
+    return {
+        "rata_rata": round(rata, 1) if rata else 0,
+        "jumlah": reviews.count(),
+    }
+
+
+def review_to_dict(review, user):
+    # ubah review jadi dict biar bisa dikirim lewat json
+    return {
+        "id": review.id,
+        "username": review.user.username,
+        "rating": review.rating,
+        "comment": review.comment,
+        "tanggal": timezone.localtime(review.created_at).strftime("%d %b %Y"),
+        "punya_sendiri": bool(user.is_authenticated and review.user_id == user.id),
+        "edit_url": reverse("catalog:review_update", args=[review.id]),
+        "delete_url": reverse("catalog:review_delete", args=[review.id]),
+    }
+
+
+# ================= katalog =================
+
 def catalog_list_view(request):
     paket_list = ambil_paket_tersedia()
     context = {
@@ -190,7 +233,88 @@ def get_catalog_json(request):
 
 
 def catalog_detail_view(request, inventory_id):
-    for paket in DUMMY_PAKET:
-        if paket["id"] == inventory_id:
-            return render(request, "catalog/catalog_detail.html", {"paket": siapin_paket(paket)})
-    raise Http404("Paket tidak ditemukan")
+    paket = cari_paket(inventory_id)
+    if paket is None:
+        raise Http404("Paket tidak ditemukan")
+
+    reviews = Review.objects.filter(inventory_id=inventory_id).select_related("user")
+
+    # cek user yang lagi login udah pernah review paket ini belum
+    review_saya = None
+    if request.user.is_authenticated:
+        review_saya = reviews.filter(user=request.user).first()
+
+    context = {
+        "paket": siapin_paket(paket),
+        "reviews": reviews,
+        "rating": ringkasan_rating(inventory_id),
+        "review_saya": review_saya,
+    }
+    return render(request, "catalog/catalog_detail.html", context)
+
+
+# ================= review (CRUD) =================
+
+def get_reviews_json(request, inventory_id):
+    # READ: daftar review satu paket, dipanggil AJAX abis nambah review
+    if cari_paket(inventory_id) is None:
+        raise Http404("Paket tidak ditemukan")
+    reviews = Review.objects.filter(inventory_id=inventory_id).select_related("user")
+    data = [review_to_dict(r, request.user) for r in reviews]
+    return JsonResponse({**ringkasan_rating(inventory_id), "data": data})
+
+
+@login_required
+@require_POST
+def review_create_view(request, inventory_id):
+    # CREATE: dikirim lewat AJAX dari halaman detail
+    if cari_paket(inventory_id) is None:
+        raise Http404("Paket tidak ditemukan")
+
+    if Review.objects.filter(user=request.user, inventory_id=inventory_id).exists():
+        return JsonResponse(
+            {"success": False, "errors": {"__all__": ["You have already reviewed this box."]}},
+            status=400,
+        )
+
+    form = ReviewForm(request.POST)
+    if form.is_valid():
+        review = form.save(commit=False)
+        review.user = request.user
+        review.inventory_id = inventory_id
+        review.save()
+        return JsonResponse({"success": True, "review": review_to_dict(review, request.user)}, status=201)
+
+    # ambil pesan errornya aja biar gampang ditampilin di JS
+    errors = {
+        field: [e["message"] for e in errs]
+        for field, errs in form.errors.get_json_data().items()
+    }
+    return JsonResponse({"success": False, "errors": errors}, status=400)
+
+
+@login_required
+def review_update_view(request, pk):
+    # UPDATE: cuma bisa edit review punya sendiri, punya orang lain jadi 404
+    review = get_object_or_404(Review, pk=pk, user=request.user)
+    form = ReviewForm(request.POST or None, instance=review)
+
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        return redirect("catalog:catalog_detail", inventory_id=review.inventory_id)
+
+    context = {
+        "form": form,
+        "review": review,
+        "paket": siapin_paket(cari_paket(review.inventory_id)),
+    }
+    return render(request, "catalog/review_form.html", context)
+
+
+@login_required
+@require_POST
+def review_delete_view(request, pk):
+    # DELETE: dipanggil lewat AJAX, cuma bisa hapus punya sendiri
+    review = get_object_or_404(Review, pk=pk, user=request.user)
+    review.delete()
+    return JsonResponse({"success": True})

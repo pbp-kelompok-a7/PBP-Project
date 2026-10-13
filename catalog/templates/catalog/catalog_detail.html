@@ -52,7 +52,7 @@
         </div>
 
         {% if paket.status == "tersedia" and paket.stok_harian > 0 %}
-          <!-- TODO: ganti href jadi {% templatetag openblock %} url 'orders:claim' paket.id {% templatetag closeblock %} kalau modul rafael udah ada -->
+          <!-- TODO: ganti href ke url orders:claim kalau modul rafael udah ada -->
           <a href="#" class="block text-center bg-black text-white font-semibold rounded-full py-4">Claim Mystery Box</a>
           {% if not user.is_authenticated %}
             <p class="text-sm text-gray-500">You need to log in as Consumer to claim this box.</p>
@@ -63,10 +63,181 @@
       </div>
     </div>
 
-    <!-- bagian review, nanti diisi pas model Review udah dibikin -->
+    <!-- ================= REVIEW ================= -->
     <hr class="my-10 border-gray-300">
-    <h2 class="text-2xl md:text-3xl font-bold">Reviews</h2>
-    <p class="mt-4 text-gray-500">No reviews yet.</p>
+
+    <div class="flex flex-wrap items-center gap-3">
+      <h2 class="text-2xl md:text-3xl font-bold">Reviews</h2>
+      <span id="review-summary" class="bg-[#CCEAFA] text-[#1E333F] text-sm font-medium px-3 py-1 rounded-full">
+        {% if rating.jumlah %}{{ rating.rata_rata }} / 5 average · {{ rating.jumlah }} reviews{% else %}No reviews yet{% endif %}
+      </span>
+    </div>
+
+    <!-- token csrf buat request delete lewat AJAX -->
+    {% csrf_token %}
+
+    {% if user.is_authenticated %}
+      {% if not review_saya %}
+        <!-- form nambah review, dikirim pake AJAX -->
+        <form id="review-form" class="mt-6 border-2 border-black rounded-2xl p-6 space-y-4">
+          <p class="text-lg font-semibold">Write a Review</p>
+
+          <div>
+            <p class="text-sm font-semibold mb-2">Your rating</p>
+            <div class="flex gap-2">
+              {% for i in "12345" %}
+              <label class="cursor-pointer">
+                <input type="radio" name="rating" value="{{ i }}" class="peer sr-only" required>
+                <span class="w-12 h-12 flex items-center justify-center border border-gray-300 rounded-xl font-semibold peer-checked:bg-black peer-checked:text-white peer-checked:border-black">{{ i }}</span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div>
+            <p class="text-sm font-semibold mb-2">Your comment</p>
+            <textarea name="comment" rows="4" required
+                      placeholder="Tell others how the box was — taste, portion, pickup experience..."
+                      class="w-full border border-gray-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-black"></textarea>
+          </div>
+
+          <p id="review-error" class="text-sm text-red-600 hidden"></p>
+
+          <button type="submit" class="bg-black text-white font-semibold rounded-full px-8 py-3">Submit Review</button>
+        </form>
+      {% else %}
+        <p id="review-note" class="mt-6 text-sm text-gray-500">You've already reviewed this box. You can edit or delete it below.</p>
+      {% endif %}
+    {% else %}
+      <p class="mt-6 text-sm text-gray-500">Log in as Consumer to write a review.</p>
+    {% endif %}
+
+    <!-- daftar review (awal dirender django, abis nambah review diganti sama JS) -->
+    <div id="review-list" class="mt-6 space-y-4">
+      {% for review in reviews %}
+        <div class="rounded-2xl p-5 {% if review.user == user %}border-2 border-black bg-[#F6FAFA]{% else %}border border-gray-300{% endif %}">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex flex-wrap items-center gap-3">
+              <div class="w-9 h-9 rounded-full bg-[#C1D7D5]"></div>
+              <span class="font-semibold">{{ review.user.username }}{% if review.user == user %} (You){% endif %}</span>
+              <span class="bg-[#E6F4E7] text-[#384739] text-xs font-medium px-2 py-1 rounded-full">{{ review.rating }} / 5</span>
+              <span class="text-sm text-gray-400">{{ review.created_at|date:"d M Y" }}</span>
+            </div>
+            {% if review.user == user %}
+            <div class="flex gap-4 text-sm font-semibold">
+              <a href="{% url 'catalog:review_update' review.id %}" class="text-[#4A7A93]">Edit</a>
+              <button type="button" class="btn-delete text-red-600" data-url="{% url 'catalog:review_delete' review.id %}">Delete</button>
+            </div>
+            {% endif %}
+          </div>
+          <p class="mt-3 text-gray-700">{{ review.comment }}</p>
+        </div>
+      {% empty %}
+        <p class="text-gray-500">No reviews yet. Be the first!</p>
+      {% endfor %}
+    </div>
   </main>
+
+  <script>
+    const reviewsJsonUrl = "{% url 'catalog:reviews_json' paket.id %}";
+    const reviewCreateUrl = "{% url 'catalog:review_create' paket.id %}";
+    const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]").value;
+
+    const reviewList = document.getElementById("review-list");
+    const reviewSummary = document.getElementById("review-summary");
+    const reviewForm = document.getElementById("review-form");
+    const reviewError = document.getElementById("review-error");
+
+    // biar teks dari user ga bisa nyisipin html aneh
+    function escapeHtml(teks) {
+      const div = document.createElement("div");
+      div.textContent = teks;
+      return div.innerHTML;
+    }
+
+    function bikinKartuReview(r) {
+      const gaya = r.punya_sendiri ? "border-2 border-black bg-[#F6FAFA]" : "border border-gray-300";
+      const tombol = r.punya_sendiri ? `
+        <div class="flex gap-4 text-sm font-semibold">
+          <a href="${r.edit_url}" class="text-[#4A7A93]">Edit</a>
+          <button type="button" class="btn-delete text-red-600" data-url="${r.delete_url}">Delete</button>
+        </div>` : "";
+      return `
+        <div class="rounded-2xl p-5 ${gaya}">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex flex-wrap items-center gap-3">
+              <div class="w-9 h-9 rounded-full bg-[#C1D7D5]"></div>
+              <span class="font-semibold">${escapeHtml(r.username)}${r.punya_sendiri ? " (You)" : ""}</span>
+              <span class="bg-[#E6F4E7] text-[#384739] text-xs font-medium px-2 py-1 rounded-full">${r.rating} / 5</span>
+              <span class="text-sm text-gray-400">${r.tanggal}</span>
+            </div>
+            ${tombol}
+          </div>
+          <p class="mt-3 text-gray-700">${escapeHtml(r.comment)}</p>
+        </div>`;
+    }
+
+    // ambil ulang daftar review dari server
+    async function muatReview() {
+      const res = await fetch(reviewsJsonUrl);
+      const hasil = await res.json();
+
+      reviewSummary.textContent = hasil.jumlah
+        ? `${hasil.rata_rata} / 5 average · ${hasil.jumlah} reviews`
+        : "No reviews yet";
+
+      reviewList.innerHTML = hasil.data.length
+        ? hasil.data.map(bikinKartuReview).join("")
+        : `<p class="text-gray-500">No reviews yet. Be the first!</p>`;
+    }
+
+    // CREATE: kirim form review tanpa reload
+    if (reviewForm) {
+      reviewForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        reviewError.classList.add("hidden");
+
+        try {
+          const res = await fetch(reviewCreateUrl, {
+            method: "POST",
+            body: new FormData(reviewForm),
+            headers: { "X-CSRFToken": csrfToken },
+          });
+          const hasil = await res.json();
+
+          if (res.ok) {
+            // form diilangin karena 1 user cuma boleh review sekali
+            const note = document.createElement("p");
+            note.className = "mt-6 text-sm text-gray-500";
+            note.textContent = "Thanks! Your review has been posted.";
+            reviewForm.replaceWith(note);
+            muatReview();
+          } else {
+            reviewError.textContent = Object.values(hasil.errors).flat().join(" ");
+            reviewError.classList.remove("hidden");
+          }
+        } catch (err) {
+          reviewError.textContent = "Something went wrong. Please log in again and retry.";
+          reviewError.classList.remove("hidden");
+        }
+      });
+    }
+
+    // DELETE: pake event delegation karena kartunya bisa diganti-ganti sama JS
+    reviewList.addEventListener("click", async (e) => {
+      const tombol = e.target.closest(".btn-delete");
+      if (!tombol) return;
+      if (!confirm("Delete this review?")) return;
+
+      const res = await fetch(tombol.dataset.url, {
+        method: "POST",
+        headers: { "X-CSRFToken": csrfToken },
+      });
+      if (res.ok) {
+        // reload biar form nulis review muncul lagi
+        location.reload();
+      }
+    });
+  </script>
 </body>
 </html>
