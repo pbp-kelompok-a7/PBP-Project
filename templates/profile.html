@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block title %}Profile — SisaBijak{% endblock title %}
+
+{% block content %}
+<main class="profile-page">
+    <section class="profile-card">
+        <p class="profile-eyebrow">Your account</p>
+        <h1>Profile</h1>
+
+        <div class="profile-name">
+            <span>Username</span>
+            <strong>{{ user.username }}</strong>
+        </div>
+
+        <form method="POST" action="{% url 'main:logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-dark profile-logout">
+                Logout
+            </button>
+        </form>
+    </section>
+</main>
+{% endblock content %}
