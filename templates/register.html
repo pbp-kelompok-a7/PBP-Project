@@ -1,0 +1,64 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register — SisaBijak</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+
+<body class="auth-body">
+    <main class="login-page">
+        <a class="back-home" href="{% url 'main:show_main' %}">
+            ← Back to Home
+        </a>
+
+        <section class="login-card register-card">
+            <p class="login-eyebrow">Join the movement</p>
+            <h1>Buat Akun</h1>
+            <p class="login-description">
+                Mulai selamatkan makanan dan beri dampak baik untuk bumi.
+            </p>
+
+            <form method="POST" class="auth-form">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="form-errors">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+                {% for field in form %}
+                    <div class="form-field">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+
+                        {% if field.help_text %}
+                            <small class="field-help">{{ field.help_text|safe }}</small>
+                        {% endif %}
+
+                        {% if field.errors %}
+                            <div class="form-errors">{{ field.errors }}</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+
+                <button type="submit" class="btn btn-dark login-button">
+                    Register
+                </button>
+            </form>
+
+            <p class="auth-switch">
+                Sudah punya akun?
+                <a href="{% url 'main:login' %}">Login di sini</a>
+            </p>
+        </section>
+    </main>
+</body>
+</html>
