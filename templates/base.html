@@ -41,7 +41,11 @@
 
         <div class="nav-actions">
             {% if user.is_authenticated %}
-                <a href="{% url 'main:profile' %}" class="btn btn-dark">Profile</a>
+                {% if user.profile.role == 'merchant' and not user.is_superuser %}
+                    <a href="{% url 'main:product_view' %}" class="btn btn-dark">Dashboard</a>
+                {% else %}
+                    <a href="{% url 'main:profile' %}" class="btn btn-dark">Profile</a>
+                {% endif %}
             {% else %}
                 <a href="{% url 'main:login' %}" class="btn btn-dark">Login</a>
             {% endif %}
