@@ -1,12 +1,18 @@
 import secrets
 from datetime import timedelta
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
+from uuid import uuid4
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
+
+
+def generate_product_id():
+    return f"PRD-{uuid4().hex[:12].upper()}"
 
 
 def generate_payment_qr_id():
@@ -25,58 +31,94 @@ def payment_proof_upload_to(instance, filename):
     )
 
 
-class MerchantProduct(models.Model):
-    class Status(models.TextChoices):
-        AVAILABLE = "available", "Tersedia"
-        SOLD_OUT = "sold_out", "Habis"
-        INACTIVE = "inactive", "Nonaktif"
+class UserProfile(models.Model):
+    class Role(models.TextChoices):
+        CONSUMER = "consumer", "Consumer"
+        MERCHANT = "merchant", "Merchant"
 
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="profile",
+    )
+    role = models.CharField(
+        max_length=10,
+        choices=Role.choices,
+        default=Role.CONSUMER,
+    )
+
+    def __str__(self):
+        return f"{self.user.username} ({self.get_role_display()})"
+
+
+class MerchantProduct(models.Model):
+    class ProductStatus(models.TextChoices):
+        AVAILABLE = "available", "Available"
+        SOLD_OUT = "sold_out", "Sold Out"
+        INACTIVE = "inactive", "Inactive"
+
+    # Compatibility alias for code from main branch.
+    Status = ProductStatus
+
+    product_id = models.CharField(
+        max_length=20,
+        primary_key=True,
+        default=generate_product_id,
+        editable=False,
+    )
     merchant = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name="merchant_products",
     )
-    product_name = models.CharField(max_length=120)
+    product_name = models.CharField(max_length=150)
     product_stock = models.PositiveIntegerField(default=0)
     product_status = models.CharField(
         max_length=16,
-        choices=Status.choices,
-        default=Status.AVAILABLE,
+        choices=ProductStatus.choices,
+        default=ProductStatus.AVAILABLE,
     )
     real_price = models.DecimalField(max_digits=12, decimal_places=2)
-    discount_price = models.DecimalField(max_digits=12, decimal_places=2)
-    start_pickup = models.TimeField()
-    end_pickup = models.TimeField()
+    discount_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[
+            MinValueValidator(Decimal("0")),
+            MaxValueValidator(Decimal("100")),
+        ],
+    )
+    start_pickup = models.DateTimeField()
+    end_pickup = models.DateTimeField()
     address = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ("product_name",)
+        ordering = ("start_pickup", "product_name")
 
     def __str__(self):
         return f"{self.product_name} - {self.merchant.username}"
 
     def clean(self):
-        if self.discount_price > self.real_price:
+        if self.start_pickup and self.end_pickup and self.start_pickup >= self.end_pickup:
             raise ValidationError(
-                {"discount_price": "Harga diskon tidak boleh melebihi harga asli."}
+                {"end_pickup": "Pickup end time must be after pickup start time."}
             )
-        if self.start_pickup >= self.end_pickup:
-            raise ValidationError(
-                {"end_pickup": "Jam selesai pickup harus setelah jam mulai."}
-            )
+
+    @property
+    def discount_price(self):
+        multiplier = Decimal("1") - (self.discount_rate / Decimal("100"))
+        return (self.real_price * multiplier).quantize(
+            Decimal("0.01"),
+            rounding=ROUND_HALF_UP,
+        )
 
     @property
     def discount_percentage(self):
-        if not self.real_price:
-            return 0
-        return round((1 - self.discount_price / self.real_price) * 100)
+        return self.discount_rate
 
-    # Alias berikut mengikuti kontrak atribut modul Merchant Inventory di README.
-    # Model sementara ini dapat diganti oleh MerchantInventory tanpa mengubah template.
     @property
     def id_inventory(self):
-        return self.pk
+        return self.product_id
 
     @property
     def restaurant_id(self):
@@ -116,16 +158,16 @@ class MerchantProduct(models.Model):
 
     @property
     def pickup_address(self):
-        """Prioritaskan alamat dari modul lokasi bila relasinya sudah tersedia."""
-
         for relation_name in ("merchant_location", "merchantlocation", "location"):
             try:
                 location = getattr(self.merchant, relation_name)
             except (AttributeError, ObjectDoesNotExist):
                 continue
+
             location_address = getattr(location, "address", "")
             if location_address:
                 return location_address
+
         return self.address
 
 
@@ -185,6 +227,7 @@ class OrderSystem(models.Model):
     def clean(self):
         if self.quantity < 1:
             raise ValidationError({"quantity": "Jumlah pesanan minimal satu."})
+
         expected_total = Decimal(self.unit_price) * self.quantity
         if self.total_price != expected_total:
             raise ValidationError(
@@ -224,6 +267,7 @@ class OrderSystem(models.Model):
             raise ValidationError("Hanya pesanan pending yang dapat dibayar.")
         if self.is_payment_expired:
             raise ValidationError("Waktu pembayaran pesanan sudah habis.")
+
         self.payment_status = self.PaymentStatus.PAID
         self.claim_qr_code = generate_claim_qr_code()
         self.save(update_fields=("payment_status", "claim_qr_code"))

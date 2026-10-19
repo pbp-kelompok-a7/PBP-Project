@@ -13,6 +13,11 @@
             <strong>{{ user.username }}</strong>
         </div>
 
+        <div class="profile-name">
+            <span>Role</span>
+            <strong>{% if user.is_superuser %}Admin{% else %}{{ user.profile.get_role_display }}{% endif %}</strong>
+        </div>
+
         <form method="POST" action="{% url 'main:logout' %}">
             {% csrf_token %}
             <button type="submit" class="btn btn-dark profile-logout">

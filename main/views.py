@@ -3,7 +3,12 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import never_cache
+
+from .forms import MerchantProductForm
+from .models import MerchantProduct
+from .decorators import merchant_required
 
 import datetime
 
@@ -53,3 +58,49 @@ def logout_user(request):
     return render(request, "logout.html")
 
 ### AUTHENTICATION AREA
+
+
+@login_required(login_url="main:login")
+@merchant_required
+@never_cache
+def product_view(request):
+    products = MerchantProduct.objects.filter(merchant=request.user)
+    return render(request, "merchant_dashboard.html", {"products": products})
+
+
+@login_required(login_url="main:login")
+@merchant_required
+@never_cache
+def product_create(request):
+    form = MerchantProductForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        product = form.save(commit=False)
+        product.merchant = request.user
+        product.save()
+        messages.success(request, "Produk berhasil diunggah.")
+        return redirect("main:product_view")
+    return render(request, "product_form.html", {"form": form, "page_title": "Tambah Produk"})
+
+
+@login_required(login_url="main:login")
+@merchant_required
+@never_cache
+def product_update(request, product_id):
+    product = get_object_or_404(MerchantProduct, product_id=product_id, merchant=request.user)
+    form = MerchantProductForm(request.POST or None, instance=product)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Produk berhasil diperbarui.")
+        return redirect("main:product_view")
+    return render(request, "product_form.html", {"form": form, "page_title": "Edit Produk", "product": product})
+
+
+@login_required(login_url="main:login")
+@merchant_required
+@never_cache
+def product_delete(request, product_id):
+    product = get_object_or_404(MerchantProduct, product_id=product_id, merchant=request.user)
+    if request.method == "POST":
+        product.delete()
+        messages.success(request, "Produk berhasil dihapus.")
+    return redirect("main:product_view")
