@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import F
@@ -17,11 +17,12 @@ from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from .models import MerchantProduct, MerchantWallet, OrderSystem
+from .decorators import is_merchant, merchant_required as product_merchant_required
+from .forms import MerchantProductForm
+from .models import MerchantProduct, MerchantWallet, OrderSystem, UserProfile
 
 
 PAYMENT_QR_PATTERN = re.compile(r"SBPAY-[A-F0-9]{12}", re.IGNORECASE)
-
 
 @never_cache
 def show_main(request):
@@ -32,9 +33,7 @@ def register(request):
     form = UserCreationForm(request.POST or None)
 
     if request.method == "POST" and form.is_valid():
-        user = form.save()
-        consumer_group, _ = Group.objects.get_or_create(name="Consumer")
-        user.groups.add(consumer_group)
+        form.save()
         messages.success(request, "Akun berhasil dibuat. Silakan login.")
         return redirect("main:login")
 
@@ -75,21 +74,19 @@ def logout_user(request):
 
     return render(request, "logout.html")
 
-
 def _is_admin(user):
     return user.is_authenticated and (user.is_staff or user.is_superuser)
 
 
 def _is_merchant(user):
-    return user.is_authenticated and user.groups.filter(
-        name__in=("Merchant", "Restaurant")
-    ).exists()
+    return user.is_authenticated and not _is_admin(user) and is_merchant(user)
 
 
 def _is_consumer(user):
     if not user.is_authenticated or _is_admin(user) or _is_merchant(user):
         return False
-    return True
+    profile, _ = UserProfile.objects.get_or_create(user=user)
+    return profile.role == UserProfile.Role.CONSUMER
 
 
 consumer_required = user_passes_test(_is_consumer, login_url="main:login")
@@ -110,15 +107,6 @@ def _screen(title, role):
 
 def _rupiah(value):
     return f"Rp{Decimal(value):,.0f}".replace(",", ".")
-
-
-def _tentative_pickup_window(reference_time=None):
-    """Pickup tentatif dimulai 30 menit dan berakhir 90 menit setelah checkout."""
-
-    ordered_at = reference_time or timezone.now()
-    pickup_start = ordered_at + timedelta(minutes=30)
-    pickup_deadline = ordered_at + timedelta(minutes=90)
-    return pickup_start, pickup_deadline
 
 
 def _restore_stock(order):
@@ -153,6 +141,7 @@ def checkout_view(request, product_id=None):
     products = MerchantProduct.objects.filter(
         product_status=MerchantProduct.Status.AVAILABLE,
         product_stock__gt=0,
+        end_pickup__gt=timezone.now() + timedelta(minutes=15),
     ).select_related("merchant")
     product = get_object_or_404(products, pk=product_id) if product_id else products.first()
 
@@ -177,8 +166,9 @@ def checkout_view(request, product_id=None):
             if (
                 locked_product.product_status != MerchantProduct.Status.AVAILABLE
                 or locked_product.product_stock < quantity
+                or locked_product.end_pickup <= timezone.now() + timedelta(minutes=15)
             ):
-                messages.error(request, "Stok produk tidak mencukupi.")
+                messages.error(request, "Produk sudah habis atau waktu pickup telah lewat.")
                 return redirect("main:checkout_product", product_id=product.pk)
 
             locked_product.product_stock -= quantity
@@ -187,7 +177,6 @@ def checkout_view(request, product_id=None):
             locked_product.save(update_fields=("product_stock", "product_status"))
 
             unit_price = locked_product.discount_price
-            _, pickup_deadline = _tentative_pickup_window()
             order = OrderSystem.objects.create(
                 consumer=request.user,
                 product=locked_product,
@@ -195,19 +184,18 @@ def checkout_view(request, product_id=None):
                 unit_price=unit_price,
                 total_price=unit_price * quantity,
                 payment_status=OrderSystem.PaymentStatus.PENDING,
-                pickup_deadline=pickup_deadline,
+                pickup_deadline=locked_product.end_pickup,
             )
 
         return redirect("main:payment_detail", pk=order.pk)
 
-    tentative_pickup_start, tentative_pickup_deadline = _tentative_pickup_window()
     context = {
         "screen": "checkout",
         "screen_config": _screen("Checkout", "consumer"),
         "product": product,
         "products": products,
-        "tentative_pickup_start": tentative_pickup_start,
-        "tentative_pickup_deadline": tentative_pickup_deadline,
+        "tentative_pickup_start": product.start_pickup if product else None,
+        "tentative_pickup_deadline": product.end_pickup if product else None,
     }
     return render(request, "checkout_payment.html", context)
 
@@ -535,3 +523,47 @@ def withdraw_funds_view(request):
     if _is_merchant(request.user):
         return redirect("main:merchant_orders")
     return redirect("main:show_main")
+@login_required(login_url="main:login")
+@never_cache
+@product_merchant_required
+def product_view(request):
+    products = MerchantProduct.objects.filter(merchant=request.user)
+    return render(request, "merchant_dashboard.html", {"products": products})
+
+
+@login_required(login_url="main:login")
+@never_cache
+@product_merchant_required
+def product_create(request):
+    form = MerchantProductForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        product = form.save(commit=False)
+        product.merchant = request.user
+        product.save()
+        messages.success(request, "Produk berhasil diunggah.")
+        return redirect("main:product_view")
+    return render(request, "product_form.html", {"form": form, "page_title": "Tambah Produk"})
+
+
+@login_required(login_url="main:login")
+@never_cache
+@product_merchant_required
+def product_update(request, product_id):
+    product = get_object_or_404(MerchantProduct, product_id=product_id, merchant=request.user)
+    form = MerchantProductForm(request.POST or None, instance=product)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Produk berhasil diperbarui.")
+        return redirect("main:product_view")
+    return render(request, "product_form.html", {"form": form, "page_title": "Edit Produk", "product": product})
+
+
+@login_required(login_url="main:login")
+@never_cache
+@product_merchant_required
+def product_delete(request, product_id):
+    product = get_object_or_404(MerchantProduct, product_id=product_id, merchant=request.user)
+    if request.method == "POST":
+        product.delete()
+        messages.success(request, "Produk berhasil dihapus.")
+    return redirect("main:product_view")

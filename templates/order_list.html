@@ -56,7 +56,14 @@
 <section class="order-card-list" id="history-order-panel" role="tabpanel" aria-labelledby="history-order-tab" hidden>
     {% for order in history_orders %}
         <article class="panel history-order-row">
-            <div><strong>{{ order.order_number }}</strong><span>{{ order.created_at|date:'d M Y, H:i' }}</span></div>
+            <div>
+                <strong>{{ order.order_number }}</strong>
+                <span>{{ order.created_at|date:'d M Y, H:i' }}</span>
+                {% if order.payment_status == 'completed' %}
+                    {% url 'catalog:catalog_detail' order.product_id as product_detail_url %}
+                    {% if product_detail_url %}<a href="{{ product_detail_url }}">Lihat produk &amp; ulasan</a>{% endif %}
+                {% endif %}
+            </div>
             <div><strong>{{ order.product.nama_produk }}</strong><span>{{ order.quantity }} item</span></div>
             <span class="status-badge status-{{ order.payment_status|order_status_class }}">{{ order.get_payment_status_display }}</span>
             <strong>{{ order.total_price|rupiah }}</strong>

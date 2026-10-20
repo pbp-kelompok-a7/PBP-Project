@@ -764,6 +764,12 @@ a {
   font-size: 0.65rem;
 }
 
+.history-order-row a {
+  color: var(--order-accent, #176d43);
+  font-size: 0.7rem;
+  text-decoration: underline;
+}
+
 .panel-header a {
   color: var(--order-blue);
   font-size: 0.7rem;
@@ -2631,3 +2637,30 @@ button {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Merchant product management */
+.product-page { max-width: 1120px; margin: 0 auto; padding: 56px 24px 80px; }
+.product-heading { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 32px; }
+.product-heading h1 { margin: 4px 0 8px; }
+.product-heading p { color: #637066; margin: 0; }
+.eyebrow { color: #169b62 !important; font-size: .8rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.product-form { max-width: 700px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; padding: 28px; background: #fff; border: 1px solid #e1e9e3; border-radius: 16px; }
+.form-field { display: grid; gap: 7px; }
+.form-field label { font-weight: 600; }
+.form-field input, .form-field select { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid #bcc8be; border-radius: 8px; font: inherit; }
+.product-form > .btn { grid-column: 1 / -1; justify-self: start; border: 0; cursor: pointer; }
+.form-error { margin: 0; color: #bd2632; font-size: .86rem; }
+.calculated-price { margin: 0; color: #126537; font-size: .9rem; }
+.flash-message { padding: 12px 16px; background: #e3f8eb; color: #126537; border-radius: 8px; }
+.merchant-account { display: flex; align-items: center; gap: 28px; margin-bottom: 28px; padding: 18px 20px; background: #f5f9f6; border-radius: 12px; }
+.merchant-account div { display: grid; gap: 4px; }.merchant-account span { color: #637066; font-size: .82rem; }.merchant-account strong { color: #1d2b20; }.merchant-account form { margin-left: auto; }
+.product-table-wrap { overflow-x: auto; border: 1px solid #e1e9e3; border-radius: 12px; }
+.product-table { width: 100%; border-collapse: collapse; background: #fff; }
+.product-table th, .product-table td { padding: 16px; border-bottom: 1px solid #e9eeea; text-align: left; vertical-align: top; }
+.product-table th { background: #f5f9f6; font-size: .84rem; text-transform: uppercase; letter-spacing: .04em; }
+.product-table small { color: #637066; }
+.status { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: .8rem; font-weight: 600; }
+.status-available { background: #dff7e8; color: #126537; }.status-sold_out { background: #ffe9cf; color: #9a4d00; }.status-inactive { background: #e9ecef; color: #59636d; }
+.product-actions { display: flex; gap: 12px; align-items: center; }.product-actions a, .product-actions button { color: #126537; font: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }.product-actions button { color: #bd2632; }
+.empty-products { padding: 52px 24px; text-align: center; background: #f5f9f6; border-radius: 12px; }.empty-products h2 { margin-top: 0; }
+@media (max-width: 700px) { .product-heading { align-items: start; flex-direction: column; }.product-form { grid-template-columns: 1fr; }.merchant-account { align-items: start; flex-direction: column; gap: 14px; }.merchant-account form { margin-left: 0; }.product-table th, .product-table td { padding: 12px; } }

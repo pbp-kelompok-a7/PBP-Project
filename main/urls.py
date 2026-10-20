@@ -14,7 +14,7 @@ urlpatterns = [
     path("orders/", views.checkout_view, name="order_index"),
     path("orders/checkout/", views.checkout_view, name="checkout"),
     path(
-        "orders/checkout/<int:product_id>/",
+        "orders/checkout/<str:product_id>/",
         views.checkout_view,
         name="checkout_product",
     ),
@@ -46,4 +46,8 @@ urlpatterns = [
         views.withdraw_funds_view,
         name="withdraw_funds",
     ),
+    path("merchant/products/", views.product_view, name="product_view"),
+    path("merchant/products/create/", views.product_create, name="product_create"),
+    path("merchant/products/<str:product_id>/edit/", views.product_update, name="product_update"),
+    path("merchant/products/<str:product_id>/delete/", views.product_delete, name="product_delete"),
 ]

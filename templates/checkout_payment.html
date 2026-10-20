@@ -33,7 +33,7 @@
                     </div>
                 </article>
                 <div class="order-meta-grid">
-                    <div class="meta-item"><span class="meta-icon" aria-hidden="true">◫</span><div><span>Estimasi Pengambilan</span><strong>{{ tentative_pickup_start|date:'H:i' }} - {{ tentative_pickup_deadline|date:'H:i' }}</strong><small>Tentatif, dihitung dari waktu checkout</small></div></div>
+                    <div class="meta-item"><span class="meta-icon" aria-hidden="true">◫</span><div><span>Jadwal Pengambilan</span><strong>{{ tentative_pickup_start|date:'d M Y, H:i' }} - {{ tentative_pickup_deadline|date:'d M Y, H:i' }}</strong><small>Mengikuti jadwal pickup produk</small></div></div>
                     <div class="meta-item"><span class="meta-icon" aria-hidden="true">⌖</span><div><span>Lokasi Toko</span><strong>{{ product.pickup_address|default:'Alamat merchant belum diisi' }}</strong></div></div>
                 </div>
             </section>

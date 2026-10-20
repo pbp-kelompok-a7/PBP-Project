@@ -1,4 +1,6 @@
 {% load static %}
+{% url 'main:checkout' as checkout_url %}
+{% url 'catalog:catalog_list' as catalog_url %}
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -23,7 +25,7 @@
                 <input id="order-search-input" type="search" placeholder="Cari makanan...">
             </form>
             <nav class="order-nav-links" aria-label="Navigasi utama">
-                <a href="{% url 'main:checkout' %}">MarketPlace</a>
+                <a href="{{ catalog_url|default:checkout_url }}">MarketPlace</a>
                 <a href="{% url 'main:show_main' %}#impact">Impact</a>
                 <a href="#">Contact</a>
             </nav>
@@ -38,6 +40,7 @@
                 <div class="profile-dropdown" id="profile-dropdown" hidden>
                     <a href="{% url 'main:profile' %}">Profil</a>
                     {% if screen_config.role == 'merchant' %}
+                        <a href="{% url 'main:product_view' %}">Produk merchant</a>
                         <a href="{% url 'main:merchant_orders' %}">Pesanan merchant</a>
                         <a href="{% url 'main:validate_claim' %}">Validasi klaim</a>
                     {% else %}

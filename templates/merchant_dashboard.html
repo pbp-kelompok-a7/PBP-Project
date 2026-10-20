@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Merchant — SisaBijak{% endblock title %}
+
+{% block content %}
+<main class="product-page">
+    <div class="product-heading">
+        <div>
+            <p class="eyebrow">Merchant Dashboard</p>
+            <h1>Produk Anda</h1>
+            <p>Kelola stok, harga, status, dan jadwal pickup produk Anda.</p>
+        </div>
+        <a class="btn btn-outline" href="{% url 'main:merchant_orders' %}">Pesanan Masuk</a>
+        <a class="btn btn-dark" href="{% url 'main:product_create' %}">+ Tambah Produk</a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}<p class="flash-message">{{ message }}</p>{% endfor %}
+    {% endif %}
+
+    <section class="merchant-account" aria-label="Informasi akun merchant">
+        <div>
+            <span>Username</span>
+            <strong>{{ user.username }}</strong>
+        </div>
+        <div>
+            <span>Role</span>
+            <strong>{{ user.profile.get_role_display }}</strong>
+        </div>
+        <form method="post" action="{% url 'main:logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline">Logout</button>
+        </form>
+    </section>
+
+    {% if products %}
+        <div class="product-table-wrap">
+            <table class="product-table">
+                <thead><tr><th>Produk</th><th>Stok</th><th>Status</th><th>Harga</th><th>Pickup</th><th>Aksi</th></tr></thead>
+                <tbody>
+                    {% for product in products %}
+                    <tr>
+                        <td><strong>{{ product.product_name }}</strong><br><small>{{ product.product_id }}</small></td>
+                        <td>{{ product.product_stock }}</td>
+                        <td><span class="status status-{{ product.product_status }}">{{ product.get_product_status_display }}</span></td>
+                        <td><s>Rp{{ product.real_price|floatformat:0 }}</s><br><strong>Rp{{ product.discount_price|floatformat:0 }}</strong><br><small>Diskon {{ product.discount_rate|floatformat:2 }}%</small></td>
+                        <td>{{ product.start_pickup|date:"d M Y, H:i" }}<br><small>s.d. {{ product.end_pickup|date:"d M Y, H:i" }}</small></td>
+                        <td class="product-actions">
+                            <a href="{% url 'main:product_update' product.product_id %}">Edit</a>
+                            <form method="post" action="{% url 'main:product_delete' product.product_id %}" onsubmit="return confirm('Hapus produk ini?');">
+                                {% csrf_token %}<button type="submit">Hapus</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <section class="empty-products"><h2>Belum ada produk</h2><p>Unggah produk pertama Anda untuk mulai menerima pesanan pickup.</p></section>
+    {% endif %}
+</main>
+{% endblock content %}

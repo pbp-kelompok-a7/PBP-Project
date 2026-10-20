@@ -1,10 +1,11 @@
-from datetime import time
+from datetime import timedelta
 from decimal import Decimal
 
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 
-from main.models import MerchantProduct
+from main.models import MerchantProduct, UserProfile
 
 
 class Command(BaseCommand):
@@ -20,9 +21,6 @@ class Command(BaseCommand):
         parser.add_argument("--merchant", default="merchant_demo")
 
     def handle(self, *args, **options):
-        consumer_group, _ = Group.objects.get_or_create(name="Consumer")
-        merchant_group, _ = Group.objects.get_or_create(name="Merchant")
-
         consumer, consumer_created = User.objects.get_or_create(
             username=options["consumer"]
         )
@@ -35,13 +33,17 @@ class Command(BaseCommand):
             consumer.first_name = "Ayu"
             consumer.last_name = "Lestari"
             consumer.save()
-        consumer.groups.add(consumer_group)
+        UserProfile.objects.update_or_create(
+            user=consumer, defaults={"role": UserProfile.Role.CONSUMER}
+        )
 
         if merchant_created:
             merchant.set_password(options["password"])
             merchant.first_name = "Roti Kita Bakery"
             merchant.save()
-        merchant.groups.add(merchant_group)
+        UserProfile.objects.update_or_create(
+            user=merchant, defaults={"role": UserProfile.Role.MERCHANT}
+        )
 
         product, product_created = MerchantProduct.objects.get_or_create(
             merchant=merchant,
@@ -50,9 +52,9 @@ class Command(BaseCommand):
                 "product_stock": 10,
                 "product_status": MerchantProduct.Status.AVAILABLE,
                 "real_price": Decimal("40000"),
-                "discount_price": Decimal("15000"),
-                "start_pickup": time(20, 0),
-                "end_pickup": time(21, 0),
+                "discount_rate": Decimal("62.50"),
+                "start_pickup": timezone.now() + timedelta(hours=1),
+                "end_pickup": timezone.now() + timedelta(hours=3),
                 "address": "Jl. Melati No. 12, Bandung",
             },
         )

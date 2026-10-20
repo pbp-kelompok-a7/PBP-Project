@@ -1,43 +1,40 @@
-from datetime import time, timedelta
+from datetime import timedelta
 from decimal import Decimal
 from tempfile import TemporaryDirectory
 
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import MerchantProduct, MerchantWallet, OrderSystem
+from .models import MerchantProduct, MerchantWallet, OrderSystem, UserProfile
 
 
 class OrderSystemFlowTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        consumer_group, _ = Group.objects.get_or_create(name="Consumer")
-        merchant_group, _ = Group.objects.get_or_create(name="Merchant")
-
         cls.consumer = User.objects.create_user(
             username="ayu",
             password="test-password",
         )
-        cls.consumer.groups.add(consumer_group)
         cls.other_consumer = User.objects.create_user(
             username="budi",
             password="test-password",
         )
-        cls.other_consumer.groups.add(consumer_group)
 
         cls.merchant = User.objects.create_user(
             username="roti-kita",
             password="test-password",
         )
-        cls.merchant.groups.add(merchant_group)
+        cls.merchant.profile.role = UserProfile.Role.MERCHANT
+        cls.merchant.profile.save(update_fields=("role",))
         cls.other_merchant = User.objects.create_user(
             username="merchant-lain",
             password="test-password",
         )
-        cls.other_merchant.groups.add(merchant_group)
+        cls.other_merchant.profile.role = UserProfile.Role.MERCHANT
+        cls.other_merchant.profile.save(update_fields=("role",))
 
         cls.product = MerchantProduct.objects.create(
             merchant=cls.merchant,
@@ -45,9 +42,9 @@ class OrderSystemFlowTests(TestCase):
             product_stock=5,
             product_status=MerchantProduct.Status.AVAILABLE,
             real_price=Decimal("40000"),
-            discount_price=Decimal("15000"),
-            start_pickup=time(20, 0),
-            end_pickup=time(21, 0),
+            discount_rate=Decimal("62.50"),
+            start_pickup=timezone.now() + timedelta(hours=1),
+            end_pickup=timezone.now() + timedelta(hours=3),
             address="Jl. Melati No. 12, Bandung",
         )
 
@@ -69,7 +66,7 @@ class OrderSystemFlowTests(TestCase):
             total_price=Decimal("15000"),
             payment_status=status,
             claim_qr_code=claim_code,
-            pickup_deadline=timezone.now() + timedelta(hours=2),
+            pickup_deadline=self.product.end_pickup,
         )
 
     def test_order_pages_require_login(self):
@@ -97,14 +94,8 @@ class OrderSystemFlowTests(TestCase):
         self.assertEqual(order.payment_status, OrderSystem.PaymentStatus.PENDING)
         self.assertTrue(order.payment_qr_id.startswith("SBPAY-"))
         self.assertIsNone(order.claim_qr_code)
-        self.assertGreaterEqual(
-            order.pickup_deadline,
-            checkout_started + timedelta(minutes=89),
-        )
-        self.assertLessEqual(
-            order.pickup_deadline,
-            checkout_started + timedelta(minutes=91),
-        )
+        self.assertEqual(order.pickup_deadline, self.product.end_pickup)
+        self.assertGreater(order.pickup_deadline, checkout_started)
         self.assertEqual(self.product.product_stock, 3)
 
     def test_product_exposes_inventory_and_location_contract(self):
@@ -238,3 +229,23 @@ class OrderSystemFlowTests(TestCase):
         )
 
         self.assertRedirects(response, reverse("main:merchant_orders"))
+
+
+class UserRoleTests(TestCase):
+    def test_new_web_user_is_consumer(self):
+        user = User.objects.create_user(username="consumer", password="password123")
+        self.assertEqual(user.profile.role, UserProfile.Role.CONSUMER)
+
+    def test_consumer_cannot_access_merchant_dashboard(self):
+        user = User.objects.create_user(username="consumer", password="password123")
+        self.client.force_login(user)
+        response = self.client.get(reverse("main:product_view"))
+        self.assertRedirects(response, reverse("main:show_main"))
+
+    def test_merchant_can_access_merchant_dashboard(self):
+        user = User.objects.create_user(username="merchant", password="password123")
+        user.profile.role = UserProfile.Role.MERCHANT
+        user.profile.save()
+        self.client.force_login(user)
+        response = self.client.get(reverse("main:product_view"))
+        self.assertEqual(response.status_code, 200)
