@@ -1,4 +1,6 @@
 {% load static %}
+{% url 'main:checkout' as checkout_url %}
+{% url 'catalog:catalog_list' as catalog_url %}
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -34,14 +36,14 @@
         </form>
 
         <nav class="nav-links" aria-label="Menu utama">
-            <a href="{% url 'catalog:catalog_list' %}">MarketPlace</a>
+            <a href="{{ catalog_url|default:checkout_url }}">MarketPlace</a>
             <a href="#impact">Impact</a>
             <a href="#">Contact</a>
         </nav>
 
         <div class="nav-actions">
             {% if user.is_authenticated %}
-                {% if user.profile.role == 'merchant' and not user.is_superuser %}
+                {% if user.profile.role == 'merchant' and not user.is_staff %}
                     <a href="{% url 'main:product_view' %}" class="btn btn-dark">Dashboard</a>
                 {% else %}
                     <a href="{% url 'main:profile' %}" class="btn btn-dark">Profile</a>

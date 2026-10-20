@@ -60,14 +60,17 @@
         </div>
       </div>
 
-      {% if tersedia %}
+      {% if tersedia and bisa_klaim %}
         {% if user.is_authenticated %}
-          <!-- TODO: ganti href ke url checkout_view punya rafael kalau udah ada -->
-          <a href="#" class="block text-center bg-black text-white font-semibold rounded-full py-4">Claim Mystery Box</a>
+          <!-- tombol klaim nyambung ke halaman checkout punya darius -->
+          <a href="{% url 'main:checkout_product' produk.product_id %}" class="block text-center bg-black text-white font-semibold rounded-full py-4">Claim Mystery Box</a>
         {% else %}
           <a href="{% url 'main:login' %}" class="block text-center bg-black text-white font-semibold rounded-full py-4">Claim Mystery Box</a>
           <p class="text-sm text-gray-500">You need to log in as Consumer to claim this box.</p>
         {% endif %}
+      {% elif tersedia %}
+        <!-- jam pickup udah lewat, checkout darius juga nolak, jadi tombolnya dimatiin -->
+        <div class="text-center bg-gray-200 text-gray-500 font-semibold rounded-full py-4">Pickup Closed</div>
       {% else %}
         <div class="text-center bg-gray-200 text-gray-500 font-semibold rounded-full py-4">Sold Out</div>
       {% endif %}

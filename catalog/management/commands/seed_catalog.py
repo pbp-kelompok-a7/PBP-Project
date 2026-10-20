@@ -53,6 +53,13 @@ class Command(BaseCommand):
                 discount_rate = discount_rate.quantize(Decimal("1"))
             discount_rate = discount_rate.quantize(Decimal("0.01"))
 
+            start_pickup = jam_hari_ini(item["start_pickup"])
+            end_pickup = jam_hari_ini(item["end_pickup"])
+            if end_pickup <= timezone.now() + timedelta(minutes=15):
+                # kalau jam pickup hari ini udah lewat, pindahin ke besok biar masih bisa di-checkout
+                start_pickup += timedelta(days=1)
+                end_pickup += timedelta(days=1)
+
             MerchantProduct.objects.update_or_create(
                 merchant=merchant,
                 product_name=item["product_name"],
@@ -61,8 +68,8 @@ class Command(BaseCommand):
                     "product_status": STATUS_MAP[item["product_status"]],
                     "real_price": real_price,
                     "discount_rate": discount_rate,
-                    "start_pickup": jam_hari_ini(item["start_pickup"]),
-                    "end_pickup": jam_hari_ini(item["end_pickup"]),
+                    "start_pickup": start_pickup,
+                    "end_pickup": end_pickup,
                     "address": item["address"],
                 },
             )

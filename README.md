@@ -55,7 +55,7 @@ SisaBijak adalah platform marketplace food rescue berbasis Django yang menghubun
 
 **Integrasi Antar Modul:**
 - Merchant Product : membaca `product_name`, `real_price`, `discount_rate` / `discount_price`, `product_stock`, `product_status`, `start_pickup`, `end_pickup`, `merchant_name`, dan `pickup_address`
-- Order System : `Review` terhubung ke `OrderSystem` berstatus `completed`, dan tombol "Klaim" akan diarahkan ke `checkout_view`
+- Order System : `Review` terhubung ke `OrderSystem` berstatus `completed`, dan tombol "Klaim" mengarah ke `main:checkout_product`
 - Authentication : halaman yang butuh login diarahkan ke `main:login`
 - Template dasar : semua halaman catalog memakai `base.html`
 
@@ -137,7 +137,7 @@ Sistem pesanan yang bakal ngeluarin kode unik/QR Code buat ditunjukin ke kasir t
 * validate_order.html : halaman validasi kode/QR untuk kasir
 
 **Integrasi Antar Modul:**
-* Modul Marketplace & Catalog : tombol "Klaim" mengarah ke `orders:claim`
+* Modul Marketplace & Catalog : tombol "Klaim" mengarah ke `main:checkout_product`
 * Modul Merchant Inventory : membaca dan memperbarui `stok_harian` serta status paket
 * Modul Impact Analytics : `Order` dipakai sebagai relasi `ImpactLog`, dan signal `order_completed` dikirim saat pesanan divalidasi
 

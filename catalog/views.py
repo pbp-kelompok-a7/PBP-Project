@@ -1,3 +1,4 @@
+from datetime import timedelta
 from django.contrib.auth.decorators import login_required
 from django.db.models import Avg, Q
 from django.http import JsonResponse
@@ -51,6 +52,9 @@ def masih_tersedia(produk):
         and produk.product_stock > 0
     )
 
+def masih_bisa_diklaim(produk):
+    # disamain sama aturan checkout darius: jam pickup-nya minimal masih 15 menit lagi
+    return masih_tersedia(produk) and produk.end_pickup > timezone.now() + timedelta(minutes=15)
 
 def ambil_produk_tersedia():
     # cuma ambil yang statusnya Available & stoknya masih ada, urut dari diskon paling gede
@@ -157,6 +161,7 @@ def catalog_detail_view(request, product_id):
     context = {
         "produk": produk_to_dict(produk),
         "tersedia": masih_tersedia(produk),
+        "bisa_klaim": masih_bisa_diklaim(produk),
         "reviews": reviews,
         "rating": ringkasan_rating(produk),
         "order_review": order_yang_bisa_direview(request.user, produk),

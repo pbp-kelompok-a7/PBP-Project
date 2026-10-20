@@ -144,6 +144,20 @@ class CatalogTest(TestCase):
         self.assertContains(response, "Claim Mystery Box")
         self.assertContains(response, "Jl. Margonda Raya No. 12, Depok")
 
+    def test_detail_tombol_klaim_ke_checkout(self):
+        user = User.objects.create_user(username="nadia", password="pass12345")
+        self.client.force_login(user)
+        response = self.client.get(reverse("catalog:catalog_detail", args=[self.bread.product_id]))
+        self.assertContains(response, reverse("main:checkout_product", args=[self.bread.product_id]))
+
+    def test_detail_pickup_udah_lewat(self):
+        self.bread.start_pickup = timezone.now() - timedelta(hours=2)
+        self.bread.end_pickup = timezone.now() - timedelta(hours=1)
+        self.bread.save()
+        response = self.client.get(reverse("catalog:catalog_detail", args=[self.bread.product_id]))
+        self.assertContains(response, "Pickup Closed")
+        self.assertNotContains(response, "Claim Mystery Box")
+
     def test_detail_produk_stok_habis_sold_out(self):
         response = self.client.get(reverse("catalog:catalog_detail", args=[self.habis.product_id]))
         self.assertContains(response, "Sold Out")
@@ -376,6 +390,11 @@ class SeedCatalogTest(TestCase):
         croissant = MerchantProduct.objects.get(product_name="Croissant Box")
         self.assertEqual(croissant.discount_rate, Decimal("67.00"))
         self.assertEqual(croissant.discount_price, Decimal("19800.00"))
+
+    def test_seed_jam_pickup_masih_bisa_dicheckout(self):
+        call_command("seed_catalog", stdout=StringIO())
+        batas = timezone.now() + timedelta(minutes=15)
+        self.assertFalse(MerchantProduct.objects.filter(end_pickup__lte=batas).exists())
 
     def test_seed_dua_kali_ga_dobel(self):
         call_command("seed_catalog", stdout=StringIO())
