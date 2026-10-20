@@ -5,10 +5,12 @@ from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.shortcuts import redirect, render
 from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import never_cache
+from django.db.models import Q
 
 from .forms import MerchantProductForm
 from .models import MerchantProduct
 from .decorators import merchant_required
+from .models import MerchantLocationIntegrator
 
 import datetime
 
@@ -104,3 +106,31 @@ def product_delete(request, product_id):
         product.delete()
         messages.success(request, "Produk berhasil dihapus.")
     return redirect("main:product_view")
+
+
+#Fitur Merchant Location Integrator
+
+def merchant_location(request):
+    query = request.GET.get('q', '').strip()
+    merchants = MerchantLocationIntegrator.objects.all()
+
+    if query:
+        merchants = merchants.filter(Q(name_merchant__icontains=query) | Q(address__icontains=query))
+
+    merchants_data = []
+    for i in merchants:
+        if i.latitude is not None and i.longitude is not None:
+            merchants_data.append({
+                "id_merchant": str(i.id_merchant),
+                "name_merchant": i.name_merchant,
+                "address": i.address,
+                "latitude": float(i.latitude),
+                "longitude": float(i.longitude),
+            })
+    
+    context = {
+        'merchants': merchants,
+        'merchants_data': merchants_data,
+        'search_query': query,
+    }
+    return render(request, 'merchant_loc.html', context)

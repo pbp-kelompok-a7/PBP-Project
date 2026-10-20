@@ -284,3 +284,15 @@ class MerchantWallet(models.Model):
 
     def __str__(self):
         return f"Saldo {self.merchant.username}: {self.balance}"
+
+#Fitur Merchant Location Integrator
+
+class MerchantLocationIntegrator(models.Model):
+    id_merchant = models.CharField(max_length=255, primary_key=True, default=uuid4, editable=False)
+    name_merchant = models.CharField(max_length=255)
+    address = models.TextField()
+    longitude = models.FloatField()
+    latitude = models.FloatField()
+
+    def __str__(self):
+        return f"{self.name_merchant} ({self.id_merchant})"

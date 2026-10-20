@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import MerchantProduct, MerchantWallet, OrderSystem, UserProfile
+from .models import MerchantProduct, MerchantWallet, OrderSystem, UserProfile, MerchantLocationIntegrator
 
 
 @admin.register(UserProfile)
@@ -54,3 +54,8 @@ class OrderSystemAdmin(admin.ModelAdmin):
 class MerchantWalletAdmin(admin.ModelAdmin):
     list_display = ("merchant", "balance", "updated_at")
     search_fields = ("merchant__username",)
+
+@admin.register(MerchantLocationIntegrator)
+class MerchantLocationAdmin(admin.ModelAdmin):
+    list_display = ("id_merchant", "name_merchant", "address", "latitude", "longitude")
+    search_fields = ("name_merchant", "address")
