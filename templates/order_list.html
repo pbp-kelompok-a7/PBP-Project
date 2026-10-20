@@ -1,0 +1,76 @@
+{% extends 'OrderSystem.html' %}
+{% load order_extras %}
+
+{% block order_content %}
+<section class="page-heading orders-heading">
+    <span class="eyebrow">Langkah 3 dari 3</span>
+    <h1>Pesanan Saya</h1>
+    <p>Lihat status pesanan, SisaBayarQR, dan QR klaim.</p>
+</section>
+
+<div class="segmented-tabs" role="tablist" aria-label="Filter pesanan">
+    <button type="button" role="tab" aria-selected="true" aria-controls="active-order-panel" id="active-order-tab">Aktif ({{ active_orders|length }})</button>
+    <button type="button" role="tab" aria-selected="false" aria-controls="history-order-panel" id="history-order-tab">Riwayat</button>
+</div>
+
+<section class="order-card-list" id="active-order-panel" role="tabpanel" aria-labelledby="active-order-tab">
+    {% for order in active_orders %}
+        <article class="panel consumer-order-panel{% if highlight == order.pk|stringformat:'s' %} highlighted-order{% endif %}">
+            <div class="success-banner status-banner-{{ order.payment_status|order_status_class }}">
+                <span class="success-icon" aria-hidden="true">{% if order.payment_status == 'paid' %}✓{% else %}◷{% endif %}</span>
+                <p><strong>{{ order.get_payment_status_display }}</strong><span>{{ order.order_number }}</span></p>
+            </div>
+            <div class="consumer-order-content">
+                <div class="consumer-order-details">
+                    <article class="ordered-product">
+                        <div class="product-photo compact" aria-hidden="true"><span>Foto Paket</span></div>
+                        <div class="product-copy">
+                            <span class="muted product-merchant">{{ order.product.merchant_name }}</span>
+                            <h2>{{ order.product.nama_produk }}</h2>
+                            <div class="price-line"><strong>{{ order.total_price|rupiah }}</strong><span>× {{ order.quantity }}</span></div>
+                        </div>
+                    </article>
+                    <div class="order-meta-grid consumer-meta">
+                        <div class="meta-item"><span class="meta-icon">⌖</span><div><span>Alamat Toko</span><strong>{{ order.product.pickup_address|default:'Alamat belum diisi' }}</strong></div></div>
+                        <div class="meta-item"><span class="meta-icon">◷</span><div><span>Batas Pengambilan</span><strong>{{ order.pickup_deadline|date:'d M Y, H:i' }}</strong></div></div>
+                    </div>
+                    {% if order.payment_status == 'pending' %}
+                        <a class="primary-button order-action-button" href="{% url 'main:payment_detail' order.pk %}">Lanjutkan Pembayaran</a>
+                    {% endif %}
+                </div>
+                {% if order.payment_status == 'paid' %}
+                    <aside class="claim-card">
+                        <h2>QR Klaim</h2>
+                        <p>Tunjukkan QR ini kepada staf toko.</p>
+                        <div class="qr-frame qr-frame-claim"><canvas class="qr-canvas" width="188" height="188" data-qr-seed="{{ order.claim_qr_code }}"></canvas></div>
+                        <button class="claim-code" type="button" data-copy="{{ order.claim_qr_code }}"><span>Kode klaim</span><strong>{{ order.claim_qr_code }}</strong></button>
+                    </aside>
+                {% endif %}
+            </div>
+        </article>
+    {% empty %}
+        <section class="panel empty-order-state"><h2>Tidak ada pesanan aktif</h2><p>Pesanan baru akan tampil di sini.</p><a class="primary-button empty-action" href="{% url 'main:checkout' %}">Mulai Checkout</a></section>
+    {% endfor %}
+</section>
+
+<section class="order-card-list" id="history-order-panel" role="tabpanel" aria-labelledby="history-order-tab" hidden>
+    {% for order in history_orders %}
+        <article class="panel history-order-row">
+            <div>
+                <strong>{{ order.order_number }}</strong>
+                <span>{{ order.created_at|date:'d M Y, H:i' }}</span>
+                {% if order.payment_status == 'completed' %}
+                    {% url 'catalog:catalog_detail' order.product_id as product_detail_url %}
+                    {% if product_detail_url %}<a href="{{ product_detail_url }}">Lihat produk &amp; ulasan</a>{% endif %}
+                {% endif %}
+            </div>
+            <div><strong>{{ order.product.nama_produk }}</strong><span>{{ order.quantity }} item</span></div>
+            <span class="status-badge status-{{ order.payment_status|order_status_class }}">{{ order.get_payment_status_display }}</span>
+            <strong>{{ order.total_price|rupiah }}</strong>
+        </article>
+    {% empty %}
+        <section class="panel empty-order-state"><h2>Belum ada riwayat</h2><p>Pesanan selesai atau kedaluwarsa akan tampil di sini.</p></section>
+    {% endfor %}
+</section>
+{% endblock order_content %}
+
