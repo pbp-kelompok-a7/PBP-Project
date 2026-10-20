@@ -1,5 +1,7 @@
 from django.urls import path
+
 from . import views
+
 
 app_name = "main"
 
@@ -9,4 +11,39 @@ urlpatterns = [
     path("login/", views.login_user, name="login"),
     path("profile/", views.profile, name="profile"),
     path("logout/", views.logout_user, name="logout"),
+    path("orders/", views.checkout_view, name="order_index"),
+    path("orders/checkout/", views.checkout_view, name="checkout"),
+    path(
+        "orders/checkout/<int:product_id>/",
+        views.checkout_view,
+        name="checkout_product",
+    ),
+    path("orders/payment/", views.payment_view, name="payment"),
+    path("orders/payment/<int:pk>/", views.payment_view, name="payment_detail"),
+    path(
+        "orders/payment/<int:pk>/status/",
+        views.payment_status_view,
+        name="payment_status",
+    ),
+    path(
+        "orders/simulator-bayar/",
+        views.simulator_bayar_view,
+        name="simulator_bayar",
+    ),
+    path("orders/my-orders/", views.order_list_view, name="order_list"),
+    path(
+        "orders/merchant/",
+        views.merchant_order_list_view,
+        name="merchant_orders",
+    ),
+    path(
+        "orders/merchant/validate/",
+        views.validate_claim_view,
+        name="validate_claim",
+    ),
+    path(
+        "orders/merchant/withdraw/",
+        views.withdraw_funds_view,
+        name="withdraw_funds",
+    ),
 ]
