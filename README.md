@@ -14,47 +14,50 @@ SisaBijak adalah platform marketplace food rescue berbasis Django yang menghubun
 ### 1. Modul Mystery Box Marketplace & Catalog
 **Penanggung Jawab** : Debora Putri Dion Simamora
 
-**Deskripsi Fitur:** Katalog tempat pembeli (mahasiswa/pekerja) bisa ngeliat, nyari, dan milih paket Mystery Box dari resto/cafe yang lagi diskon gede (50-70%) pas mau tutup toko, lengkap dengan ulasan dari pembeli sebelumnya.
+**Deskripsi Fitur:** Katalog tempat pembeli (mahasiswa/pekerja) bisa ngeliat, nyari, dan milih paket Mystery Box dari resto/cafe yang lagi diskon gede (50-70%) pas mau tutup toko, lengkap dengan ulasan dari pembeli yang udah ngambil pesanannya.
 
 **Models:**
 - Review
   * user : ForeignKey(User), consumer yang memberi ulasan
-  * order : OneToOneField(Order), pesanan berstatus `completed` yang diulas (1 pesanan = 1 ulasan)
-  * inventory : ForeignKey(MerchantInventory), paket Mystery Box yang diulas
-  * rating : PositiveSmallIntegerField, nilai 1–5
+  * order : OneToOneField(OrderSystem), pesanan berstatus `completed` yang diulas (1 pesanan = 1 ulasan)
+  * product : ForeignKey(MerchantProduct), produk Mystery Box yang diulas
+  * rating : PositiveSmallIntegerField, nilai 1-5
   * comment : TextField, isi ulasan
   * created_at : DateTimeField, waktu ulasan dibuat
   * updated_at : DateTimeField, waktu ulasan terakhir diubah
 
 **Views:**
 *Guest / Consumer*
-- catalog_list_view(request) : menampilkan halaman katalog berisi paket `MerchantInventory` berstatus `tersedia`
-- get_catalog_json(request) : endpoint JSON untuk search `nama_produk` dan filter `harga_diskon` (dipanggil via AJAX)
-- catalog_detail_view(request, inventory_id) : detail paket (harga asli vs diskon, `stok_harian`, jam pickup, alamat toko), daftar ulasan, dan tombol "Klaim"
-- get_reviews_json(request, inventory_id) : endpoint JSON daftar ulasan dan rata-rata rating suatu paket
+- catalog_list_view(request) : menampilkan halaman katalog berisi `MerchantProduct` berstatus `Available` dan stok > 0, diurutkan dari diskon terbesar
+- get_catalog_json(request) : endpoint JSON untuk search `product_name` / nama toko dan filter `discount_price` (dipanggil via AJAX)
+- catalog_detail_view(request, product_id) : detail produk (harga asli vs diskon, `product_stock`, jam pickup, alamat), daftar ulasan, dan tombol "Klaim"
+- get_reviews_json(request, product_id) : endpoint JSON daftar ulasan dan rata-rata rating suatu produk
 
 *Consumer*
-- review_create_view(request, order_id) : membuat ulasan untuk pesanan `completed` milik sendiri (via AJAX)
+- review_create_view(request, product_id) : membuat ulasan dari pesanan `completed` milik sendiri yang belum diulas (via AJAX)
 - review_update_view(request, pk) : mengubah ulasan milik sendiri
-- review_delete_view(request, pk) : menghapus ulasan milik sendiri
+- review_delete_view(request, pk) : menghapus ulasan milik sendiri (via AJAX)
 
 **Aturan Validasi:**
-- Katalog hanya menampilkan paket dengan status `tersedia` dan `stok_harian` > 0
-- Guest bisa melihat katalog dan ulasan, tapi harus login sebagai Consumer untuk klaim dan menulis ulasan
-- Ulasan hanya bisa dibuat dari `Order` milik sendiri yang berstatus `completed`, dan satu `Order` hanya bisa diulas satu kali
+- Katalog hanya menampilkan produk dengan status `Available` dan `product_stock` > 0
+- Produk `Sold Out` / `Inactive` tetap bisa dibuka lewat link, tapi tombol "Klaim" diganti "Sold Out"
+- Guest bisa melihat katalog dan ulasan, tapi harus login untuk klaim dan menulis ulasan
+- Ulasan hanya bisa dibuat dari `OrderSystem` milik sendiri yang berstatus `completed`, dan satu pesanan hanya bisa diulas satu kali
 - Consumer hanya bisa mengubah dan menghapus ulasannya sendiri
 
 **Templates:**
-- catalog.html : halaman katalog dengan search bar, filter harga, dan grid kartu paket
-- catalog_detail.html : halaman detail paket beserta ulasan dan tombol "Klaim"
-- review_form.html : form tambah/edit ulasan
-- components/mystery_box_card.html : kartu paket reusable (nama produk, nama toko, harga coret, persen diskon, sisa stok)
+- catalog.html : halaman katalog dengan search bar, filter harga, dan grid kartu produk
+- catalog_detail.html : halaman detail produk beserta ulasan, form ulasan, dan tombol "Klaim"
+- review_form.html : halaman edit ulasan
+
+**Data Awal:**
+- `python manage.py seed_catalog` : mengisi 50 produk Mystery Box beserta akun merchant-nya dari `catalog/data/paket_dummy.json`
 
 **Integrasi Antar Modul:**
-- Modul Merchant Inventory : membaca `nama_produk`, `harga_asli`, `harga_diskon`, `stok_harian`, status, serta `jam_mulai_pickup` dan `jam_selesai_pickup`
-- Modul Order Validation : tombol "Klaim" mengarah ke `orders:claim`, dan `Review` terhubung ke `Order` berstatus `completed`
-- Modul Merchant Location : `name_merchant` dan `address` ditampilkan di halaman detail paket
-- Modul Impact Analytics : `components/impact_summary_widget.html` ditampilkan di halaman katalog
+- Merchant Product : membaca `product_name`, `real_price`, `discount_rate` / `discount_price`, `product_stock`, `product_status`, `start_pickup`, `end_pickup`, `merchant_name`, dan `pickup_address`
+- Order System : `Review` terhubung ke `OrderSystem` berstatus `completed`, dan tombol "Klaim" akan diarahkan ke `checkout_view`
+- Authentication : halaman yang butuh login diarahkan ke `main:login`
+- Template dasar : semua halaman catalog memakai `base.html`
 
 ### 2. Modul Merchant Inventory & Pickup Manager
 **Penanggung Jawab** : Jefry Acmal Dzikhrullah
