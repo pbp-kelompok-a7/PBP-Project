@@ -1,15 +1,16 @@
 from django.contrib.auth.models import User
 from django.db import models
 
+from main.models import MerchantProduct, OrderSystem
+
 
 class Review(models.Model):
     RATING_CHOICES = [(i, str(i)) for i in range(1, 6)]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="catalog_reviews")
-    # SEMENTARA: pake id paket dummy dulu
-    # nanti diganti: inventory = models.ForeignKey(MerchantInventory, ...)
-    # sama ditambah: order = models.OneToOneField(Order, ...) kalau model rafael udah ada
-    inventory_id = models.PositiveIntegerField()
+    # 1 order cuma boleh direview sekali, makanya pake OneToOne
+    order = models.OneToOneField(OrderSystem, on_delete=models.CASCADE, related_name="review")
+    product = models.ForeignKey(MerchantProduct, on_delete=models.CASCADE, related_name="reviews")
     rating = models.PositiveSmallIntegerField(choices=RATING_CHOICES)
     comment = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -17,10 +18,6 @@ class Review(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
-        # 1 user cuma boleh review 1 paket sekali
-        constraints = [
-            models.UniqueConstraint(fields=["user", "inventory_id"], name="unique_review_per_paket")
-        ]
 
     def __str__(self):
-        return f"{self.user.username} - paket {self.inventory_id} ({self.rating}/5)"
+        return f"{self.user.username} - {self.product.product_name} ({self.rating}/5)"
