@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }} — SisaBijak{% endblock title %}
+
+{% block content %}
+<main class="product-page">
+    <div class="product-heading">
+        <div>
+            <p class="eyebrow">Merchant Product</p>
+            <h1>{{ page_title }}</h1>
+            <p>Lengkapi informasi produk dan waktu pengambilan.</p>
+        </div>
+        <a class="btn btn-outline" href="{% url 'main:product_view' %}">Kembali ke Dashboard</a>
+    </div>
+
+    <form method="post" class="product-form" novalidate>
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="form-field">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.name == 'discount_rate' %}
+                    <p class="calculated-price">Harga setelah diskon: <strong id="discount-price-preview">—</strong></p>
+                {% endif %}
+                {% if field.help_text %}<small class="field-help">{{ field.help_text }}</small>{% endif %}
+                {% for error in field.errors %}<p class="form-error">{{ error }}</p>{% endfor %}
+            </div>
+        {% endfor %}
+        {% for error in form.non_field_errors %}<p class="form-error">{{ error }}</p>{% endfor %}
+        <button class="btn btn-dark" type="submit">Simpan Produk</button>
+    </form>
+</main>
+<script>
+    (() => {
+        const realPrice = document.getElementById('id_real_price');
+        const discountRate = document.getElementById('id_discount_rate');
+        const preview = document.getElementById('discount-price-preview');
+        const updatePreview = () => {
+            const price = Number.parseFloat(realPrice.value);
+            const rate = Number.parseFloat(discountRate.value);
+            if (Number.isFinite(price) && Number.isFinite(rate) && rate >= 0 && rate <= 100) {
+                preview.textContent = `Rp${(price * (1 - rate / 100)).toLocaleString('id-ID', { maximumFractionDigits: 2 })}`;
+            } else {
+                preview.textContent = '—';
+            }
+        };
+        realPrice.addEventListener('input', updatePreview);
+        discountRate.addEventListener('input', updatePreview);
+        updatePreview();
+    })();
+</script>
+{% endblock content %}
