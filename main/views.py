@@ -161,7 +161,7 @@ def consumer_dashboard_view(request):
         "total_money_saved": consumer_profile.total_money_saved,
         "total_co2_prevented": consumer_profile.total_co2_prevented,
     }
-    return render(request, "consumer_dashboard.html", context)
+    return render(request, "consumer_dashboard_view.html", context)
 
 #EDIT CONSUMER PROFILE
 @login_required(login_url="main:login")
