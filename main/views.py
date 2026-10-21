@@ -1,4 +1,4 @@
-from django.contrib import messages
+﻿from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
@@ -14,14 +14,10 @@ from django.db.models import Sum, F, ExpressionWrapper, DecimalField
 from django.db.models.functions import Coalesce
 from django.contrib.auth.models import User
 from .decorators import merchant_required
-from django.contrib.auth import update_session_auth_hash
-from django.contrib.auth.forms import PasswordChangeForm
-from django.db.models import Sum
 from decimal import Decimal
 
 from .forms import MerchantProductForm, ConsumerProfileForm
 from .models import ConsumerProfile, MerchantProduct, OrderSystem, UserProfile
-
 import datetime
 
 @never_cache
@@ -197,7 +193,7 @@ def edit_profile_view(request):
         )
         password_form = PasswordChangeForm(request.user)
 
-    return render(request, "edit_profile.html", {
+    return render(request, "edit_profile_view.html", {
         "profile_form": profile_form,
         "password_form": password_form,
     })
@@ -222,7 +218,7 @@ def order_history_view(request):
     if selected_status in valid_statuses:
         orders = orders.filter(payment_status=selected_status)
 
-    return render(request, "order_history.html", {
+    return render(request, "order_history_view.html", {
         "orders": orders,
         "selected_status": selected_status,
         "status_choices": OrderSystem.PaymentStatus.choices,

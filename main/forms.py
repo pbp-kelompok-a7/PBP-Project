@@ -37,7 +37,7 @@ class MerchantProductForm(forms.ModelForm):
         return cleaned_data
 
 
-#ConsumerProfile
+#CONSUMER PROFILE
 class ConsumerProfileForm(forms.ModelForm):
     username = forms.CharField(max_length=150)
 
