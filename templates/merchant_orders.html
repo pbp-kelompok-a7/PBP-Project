@@ -1,0 +1,71 @@
+{% extends 'OrderSystem.html' %}
+{% load order_extras %}
+
+{% block order_content %}
+<div class="merchant-heading-row">
+    <section class="page-heading merchant-heading">
+        <span class="eyebrow">Dashboard Merchant</span>
+        <h1>Pesanan Masuk</h1>
+        <p>Kelola pesanan dan validasi QR saat pengambilan.</p>
+    </section>
+    <div class="revenue-card">
+        <span aria-hidden="true">◎</span>
+        <p><span>Saldo Tersedia</span><strong>{{ wallet.balance|rupiah }}</strong></p>
+        <form method="post" action="{% url 'main:withdraw_funds' %}">
+            {% csrf_token %}
+            <button type="submit"{% if wallet.balance <= 0 %} disabled{% endif %}>Cairkan</button>
+        </form>
+    </div>
+</div>
+
+<div class="merchant-layout">
+    <section class="panel merchant-order-list">
+        <header class="panel-header"><h2>Daftar Pesanan</h2><a href="{% url 'main:validate_claim' %}">Input kode klaim</a></header>
+        <div class="merchant-orders">
+            {% for order in incoming_orders %}
+                <a class="merchant-order-row{% if selected_order.pk == order.pk %} selected{% endif %}" href="{% url 'main:merchant_orders' %}?selected={{ order.pk }}">
+                    <span class="order-id"><strong>{{ order.order_number }}</strong><small>{{ order.created_at|date:'H:i' }}</small></span>
+                    <span class="order-customer"><strong>{{ order.consumer.get_full_name|default:order.consumer.username }}</strong><small>{{ order.product.nama_produk }} ({{ order.quantity }})</small></span>
+                    <span class="order-row-status"><em class="status-badge status-ready">Siap diklaim</em><strong>{{ order.total_price|rupiah }}</strong></span><span>›</span>
+                </a>
+            {% empty %}
+                <div class="empty-list">Tidak ada pesanan yang siap diklaim.</div>
+            {% endfor %}
+            {% for order in history_orders|slice:':3' %}
+                <a class="merchant-order-row{% if selected_order.pk == order.pk %} selected{% endif %}" href="{% url 'main:merchant_orders' %}?selected={{ order.pk }}">
+                    <span class="order-id"><strong>{{ order.order_number }}</strong><small>{{ order.created_at|date:'H:i' }}</small></span>
+                    <span class="order-customer"><strong>{{ order.consumer.get_full_name|default:order.consumer.username }}</strong><small>{{ order.product.nama_produk }} ({{ order.quantity }})</small></span>
+                    <span class="order-row-status"><em class="status-badge status-done">Selesai</em><strong>{{ order.total_price|rupiah }}</strong></span><span>›</span>
+                </a>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="panel merchant-order-detail">
+        {% if selected_order %}
+            <header class="detail-header"><div><h2>Detail Pesanan</h2><strong>{{ selected_order.order_number }}</strong></div><span class="status-badge status-{{ selected_order.payment_status|order_status_class }}">{{ selected_order.get_payment_status_display }}</span></header>
+            <dl class="detail-list">
+                <div><dt>Nama Pembeli</dt><dd>{{ selected_order.consumer.get_full_name|default:selected_order.consumer.username }}</dd></div>
+                <div><dt>Item</dt><dd>{{ selected_order.product.nama_produk }}</dd></div>
+                <div><dt>Jumlah</dt><dd>{{ selected_order.quantity }}</dd></div>
+                <div><dt>Total Pembayaran</dt><dd>{{ selected_order.total_price|rupiah }}</dd></div>
+                <div><dt>Batas Pengambilan</dt><dd>{{ selected_order.pickup_deadline|date:'d M Y, H:i' }}</dd></div>
+            </dl>
+            <div class="validation-area">
+                <h3>Validasi QR Klaim</h3>
+                {% if selected_order.payment_status == 'paid' %}
+                    <a class="scanner" href="{% url 'main:validate_claim' %}?code={{ selected_order.claim_qr_code }}">
+                        <canvas class="qr-canvas" width="88" height="88" data-qr-seed="{{ selected_order.claim_qr_code }}"></canvas>
+                    </a>
+                    <p>Klik QR untuk memvalidasi klaim pembeli.</p>
+                {% else %}
+                    <p class="inline-notice">Pesanan ini sudah {{ selected_order.get_payment_status_display|lower }}.</p>
+                {% endif %}
+            </div>
+        {% else %}
+            <div class="empty-state compact-empty"><h2>Belum ada pesanan</h2><p>Pesanan yang sudah dibayar akan muncul di sini.</p></div>
+        {% endif %}
+    </section>
+</div>
+{% endblock order_content %}
+

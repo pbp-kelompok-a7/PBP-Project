@@ -1,0 +1,79 @@
+{% load static %}
+{% url 'main:checkout' as checkout_url %}
+{% url 'catalog:catalog_list' as catalog_url %}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Sistem checkout, pembayaran, dan klaim pesanan SisaBijak.">
+    <title>{{ screen_config.title }} | SisaBijak</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body class="order-system-body" data-screen="{{ screen }}">
+    <a class="skip-link" href="#main-content">Lewati ke konten utama</a>
+
+    <div class="order-shell">
+        <header class="order-navbar">
+            <a href="{% url 'main:show_main' %}" class="order-brand" aria-label="SisaBijak - Beranda">SisaBijak</a>
+            <form class="order-search" role="search" onsubmit="return false">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.6-3.6"></path></svg>
+                <label class="sr-only" for="order-search-input">Cari makanan</label>
+                <input id="order-search-input" type="search" placeholder="Cari makanan...">
+            </form>
+            <nav class="order-nav-links" aria-label="Navigasi utama">
+                <a href="{{ catalog_url|default:checkout_url }}">MarketPlace</a>
+                <a href="{% url 'main:show_main' %}#impact">Impact</a>
+                <a href="#">Contact</a>
+            </nav>
+            <div class="profile-menu">
+                <button class="profile-trigger" type="button" aria-expanded="false" aria-controls="profile-dropdown">
+                    <span class="profile-avatar" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"></circle><path d="M5.5 20c.5-4 2.7-6 6.5-6s6 2 6.5 6"></path></svg>
+                    </span>
+                    <span>{{ request.user.get_full_name|default:request.user.username }}</span>
+                    <svg class="chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m7 9 5 5 5-5"></path></svg>
+                </button>
+                <div class="profile-dropdown" id="profile-dropdown" hidden>
+                    <a href="{% url 'main:profile' %}">Profil</a>
+                    {% if screen_config.role == 'merchant' %}
+                        <a href="{% url 'main:product_view' %}">Produk merchant</a>
+                        <a href="{% url 'main:merchant_orders' %}">Pesanan merchant</a>
+                        <a href="{% url 'main:validate_claim' %}">Validasi klaim</a>
+                    {% else %}
+                        <a href="{% url 'main:order_list' %}">Pesanan saya</a>
+                    {% endif %}
+                    <a href="{% url 'main:logout' %}">Keluar</a>
+                </div>
+            </div>
+        </header>
+
+        {% if messages %}
+            <div class="order-message-stack" aria-live="polite">
+                {% for message in messages %}
+                    <div class="order-message order-message-{{ message.tags|default:'info' }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <main class="order-main" id="main-content">
+            {% block order_content %}{% endblock order_content %}
+        </main>
+    </div>
+
+    <div class="toast" id="order-toast" role="status" aria-live="polite" aria-atomic="true"></div>
+    <script>
+        window.orderSystemRoutes = {
+            checkout: "{% url 'main:checkout' %}",
+            orders: "{% url 'main:order_list' %}",
+            simulator: "{% url 'main:simulator_bayar' %}",
+            merchant: "{% url 'main:merchant_orders' %}"
+        };
+    </script>
+    <script src="{% static 'js/order-system.js' %}" defer></script>
+</body>
+</html>
+
