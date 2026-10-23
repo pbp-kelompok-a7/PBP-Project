@@ -126,6 +126,7 @@ def merchant_location(request):
                 "address": i.address,
                 "latitude": float(i.latitude),
                 "longitude": float(i.longitude),
+                "merchant": merchants,
             })
     
     context = {
