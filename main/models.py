@@ -285,7 +285,7 @@ class MerchantWallet(models.Model):
     def __str__(self):
         return f"Saldo {self.merchant.username}: {self.balance}"
 
-#Comsumer Profile
+#CONSUMER PROFILE
 class ConsumerProfile(models.Model):
     user = models.OneToOneField(
         User,
