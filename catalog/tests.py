@@ -96,6 +96,22 @@ class CatalogTest(TestCase):
         self.assertEqual(diskon, sorted(diskon, reverse=True))
 
     # ===== endpoint json katalog =====
+    
+    def test_katalog_search_dari_navbar(self):
+        # search bar navbar ngirim ?q= ke halaman catalog
+        response = self.client.get(reverse("catalog:catalog_list"), {"q": "donut"})
+        self.assertContains(response, "Donut Mix Box")
+        self.assertNotContains(response, "Cheesecake Box")
+        self.assertEqual(response.context["jumlah"], 1)
+        self.assertEqual(response.context["keyword"], "donut")
+
+    def test_search_navbar_ngarah_ke_catalog(self):
+        # form search di navbar harus ngirim ke /catalog/ pake name="q"
+        response = self.client.get(reverse("catalog:catalog_list"))
+        self.assertContains(response, f'action="{reverse("catalog:catalog_list")}"')
+        self.assertContains(response, 'name="q"')
+        self.assertNotContains(response, 'id="search-input"')
+
 
     def test_json_tanpa_filter(self):
         response = self.client.get(reverse("catalog:catalog_json"))
