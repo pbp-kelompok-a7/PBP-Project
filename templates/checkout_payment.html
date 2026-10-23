@@ -1,0 +1,120 @@
+{% extends 'OrderSystem.html' %}
+{% load static order_extras %}
+
+{% block order_content %}
+{% if screen == 'checkout' %}
+    <section class="page-heading">
+        <span class="eyebrow">Langkah 1 dari 3</span>
+        <h1>Checkout</h1>
+        <p>Periksa pesananmu sebelum melanjutkan pembayaran.</p>
+    </section>
+
+    {% if product %}
+        <form method="post" class="checkout-layout checkout-form">
+            {% csrf_token %}
+            <section class="panel checkout-items" aria-labelledby="checkout-items-title">
+                <h2 id="checkout-items-title">Item Pesanan</h2>
+                <article class="product-card" data-unit-price="{{ product.harga_diskon }}" data-original-price="{{ product.harga_asli }}" data-max-stock="{{ product.stok_harian }}">
+                    <div class="product-photo" aria-hidden="true"><span>Foto Paket</span></div>
+                    <div class="product-copy">
+                        <span class="muted product-merchant">{{ product.merchant_name }}</span>
+                        <h3>{{ product.nama_produk }}</h3>
+                        <span class="status-badge status-ready">Hemat {{ product.discount_percentage }}%</span>
+                        <div class="price-line"><strong>{{ product.harga_diskon|rupiah }}</strong><del>{{ product.harga_asli|rupiah }}</del></div>
+                    </div>
+                    <div class="quantity-control-wrap">
+                        <span class="field-label">Jumlah</span>
+                        <div class="quantity-control" role="group" aria-label="Atur jumlah pesanan">
+                            <button type="button" data-quantity="minus" aria-label="Kurangi jumlah">−</button>
+                            <output id="quantity-value" aria-live="polite">1</output>
+                            <button type="button" data-quantity="plus" aria-label="Tambah jumlah">+</button>
+                            <input type="hidden" name="quantity" id="quantity-input" value="1">
+                        </div>
+                    </div>
+                </article>
+                <div class="order-meta-grid">
+                    <div class="meta-item"><span class="meta-icon" aria-hidden="true">◫</span><div><span>Jadwal Pengambilan</span><strong>{{ tentative_pickup_start|date:'d M Y, H:i' }} - {{ tentative_pickup_deadline|date:'d M Y, H:i' }}</strong><small>Mengikuti jadwal pickup produk</small></div></div>
+                    <div class="meta-item"><span class="meta-icon" aria-hidden="true">⌖</span><div><span>Lokasi Toko</span><strong>{{ product.pickup_address|default:'Alamat merchant belum diisi' }}</strong></div></div>
+                </div>
+            </section>
+
+            <aside class="panel order-summary" aria-labelledby="order-summary-title">
+                <h2 id="order-summary-title">Ringkasan Pesanan</h2>
+                <dl>
+                    <div><dt>Subtotal</dt><dd id="summary-subtotal">{{ product.harga_diskon|rupiah }}</dd></div>
+                    <div><dt>Biaya Layanan</dt><dd>Rp0</dd></div>
+                    <div class="summary-total"><dt>Total Pembayaran</dt><dd id="summary-total">{{ product.harga_diskon|rupiah }}</dd></div>
+                </dl>
+                <div class="savings-card">
+                    <span class="leaf-icon" aria-hidden="true">●</span>
+                    <p><strong>Anda hemat <span id="summary-savings">{{ product.harga_asli|rupiah }}</span></strong><br><span>dari harga normal <del id="summary-original">{{ product.harga_asli|rupiah }}</del></span></p>
+                </div>
+                <button type="submit" class="primary-button">Bayar Sekarang</button>
+                <p class="secure-note">Stok akan dikurangi secara atomik saat pesanan dibuat.</p>
+            </aside>
+        </form>
+
+        {% if products|length > 1 %}
+            <nav class="product-switcher" aria-label="Pilih produk lain">
+                {% for item in products %}
+                    <a href="{% url 'main:checkout_product' item.pk %}"{% if item.pk == product.pk %} class="active"{% endif %}>{{ item.nama_produk }}</a>
+                {% endfor %}
+            </nav>
+        {% endif %}
+    {% else %}
+        <section class="panel empty-order-state">
+            <h2>Belum ada produk tersedia</h2>
+            <p>Merchant perlu menambahkan produk aktif dengan stok lebih dari nol terlebih dahulu.</p>
+        </section>
+    {% endif %}
+
+{% else %}
+    <a class="back-link" href="{% url 'main:checkout' %}">← Kembali</a>
+    <section class="page-heading payment-heading">
+        <span class="eyebrow">Langkah 2 dari 3</span>
+        <h1>Pembayaran</h1>
+        <p>Lakukan pembayaran dalam 15 menit untuk mengamankan pesanan Anda.</p>
+    </section>
+
+    <div class="payment-layout" data-payment-poll data-status-url="{{ status_url }}" data-redirect-url="{{ order_list_url }}">
+        <div class="payment-main-column">
+            <section class="payment-timer" data-payment-deadline="{{ order.payment_deadline|date:'c' }}" aria-label="Waktu pembayaran tersisa">
+                <span class="timer-icon" aria-hidden="true">◷</span>
+                <div><strong id="payment-status-label">{{ order.get_payment_status_display }}</strong><span>Selesaikan pembayaran sebelum waktu habis.</span></div>
+                <div class="countdown-wrap"><strong id="payment-countdown">15:00</strong><span>Waktu tersisa</span></div>
+            </section>
+            <section class="panel qr-payment-card">
+                <div class="qr-frame qr-frame-large">
+                    <img class="payment-qr-image" src="{% static 'img/sisabayar-qris.jpeg' %}" alt="SisaBayarQR untuk pembayaran pesanan {{ order.order_number }}">
+                </div>
+                <div class="qr-payment-copy">
+                    <span class="qr-label">SisaBayarQR</span>
+                    <span class="muted">Payment QR ID</span>
+                    <strong>{{ order.payment_qr_id }}</strong>
+                    <span class="muted payment-total-label">Total Pembayaran</span>
+                    <strong class="payment-total">{{ order.total_price|rupiah }}</strong>
+                    {% if order.payment_status == 'pending' %}
+                        <button class="secondary-button" type="button" data-download-qr="{{ order.payment_qr_id }}" data-qr-source="{% static 'img/sisabayar-qris.jpeg' %}">Unduh SisaBayarQR</button>
+                    {% endif %}
+                </div>
+            </section>
+        </div>
+        <aside class="panel payment-steps">
+            <h2>Cara Pembayaran</h2>
+            <ol>
+                <li><span>1</span><p>Selesaikan pembayaran sesuai SisaBayarQR.</p></li>
+                <li><span>2</span><p>Siapkan foto atau tangkapan layar bukti pembayaran.</p></li>
+                <li><span>3</span><p>Unggah bukti tersebut pada simulator dan konfirmasi.</p></li>
+            </ol>
+            {% if order.payment_status == 'pending' %}
+                <a class="upload-button" href="{% url 'main:simulator_bayar' %}?order={{ order.pk }}"><span>Upload bukti pembayaran</span><span>›</span></a>
+            {% elif order.payment_status == 'paid' or order.payment_status == 'completed' %}
+                <a class="primary-button" href="{{ order_list_url }}">Lihat QR Klaim</a>
+            {% else %}
+                <a class="primary-button" href="{% url 'main:checkout' %}">Buat Pesanan Baru</a>
+            {% endif %}
+        </aside>
+    </div>
+{% endif %}
+{% endblock order_content %}
+
