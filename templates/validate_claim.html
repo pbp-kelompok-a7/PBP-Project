@@ -1,0 +1,46 @@
+{% extends 'OrderSystem.html' %}
+{% load order_extras %}
+
+{% block order_content %}
+<a class="back-link" href="{% url 'main:merchant_orders' %}">← Kembali ke Pesanan Masuk</a>
+<section class="page-heading">
+    <span class="eyebrow">Kasir Merchant</span>
+    <h1>Validasi QR Klaim</h1>
+    <p>Masukkan kode dari QR klaim milik konsumen.</p>
+</section>
+
+<div class="validation-layout">
+    <form method="post" class="panel claim-search-card">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="search">
+        <label for="claim-code-input">Kode klaim</label>
+        <input class="order-text-input" id="claim-code-input" name="claim_qr_code" value="{{ claim_code }}" placeholder="SBQR-XXXXXXXX" autocomplete="off" required>
+        <button class="primary-button" type="submit">Periksa Kode</button>
+    </form>
+
+    <section class="panel claim-validation-result">
+        {% if order %}
+            <header class="detail-header"><div><h2>Detail Klaim</h2><strong>{{ order.order_number }}</strong></div><span class="status-badge status-{{ order.payment_status|order_status_class }}">{{ order.get_payment_status_display }}</span></header>
+            <dl class="detail-list">
+                <div><dt>Pembeli</dt><dd>{{ order.consumer.get_full_name|default:order.consumer.username }}</dd></div>
+                <div><dt>Produk</dt><dd>{{ order.product.nama_produk }}</dd></div>
+                <div><dt>Jumlah</dt><dd>{{ order.quantity }}</dd></div>
+                <div><dt>Total</dt><dd>{{ order.total_price|rupiah }}</dd></div>
+                <div><dt>Batas pickup</dt><dd>{{ order.pickup_deadline|date:'d M Y, H:i' }}</dd></div>
+            </dl>
+            {% if order.payment_status == 'paid' %}
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="confirm">
+                    <input type="hidden" name="claim_qr_code" value="{{ order.claim_qr_code }}">
+                    <button class="primary-button" type="submit">Konfirmasi Penyerahan Pesanan</button>
+                </form>
+            {% else %}
+                <p class="inline-notice">Kode ini tidak dapat digunakan lagi.</p>
+            {% endif %}
+        {% else %}
+            <div class="empty-state compact-empty"><h2>Menunggu kode klaim</h2><p>Detail pembeli dan pesanan akan muncul setelah kode valid ditemukan.</p></div>
+        {% endif %}
+    </section>
+</div>
+{% endblock order_content %}

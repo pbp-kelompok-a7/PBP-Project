@@ -8,7 +8,7 @@ from .models import UserProfile
 
 def is_merchant(user):
     """Admin tidak dianggap Merchant; akses admin tetap melalui Django Admin."""
-    if not user.is_authenticated or user.is_superuser:
+    if not user.is_authenticated or user.is_staff or user.is_superuser:
         return False
     profile, _ = UserProfile.objects.get_or_create(user=user)
     return profile.role == UserProfile.Role.MERCHANT
