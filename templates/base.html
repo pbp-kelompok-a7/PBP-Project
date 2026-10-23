@@ -18,13 +18,13 @@
     <header class="navbar">
         <a href="{% url 'main:show_main' %}" class="brand">SisaBijak</a>
 
-        <form class="search" role="search" onsubmit="return false">
+            <form class="search" role="search" method="get" action="{{ catalog_url }}">
             <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <circle cx="11" cy="11" r="7"/>
                 <path d="m20 20-3.5-3.5"/>
             </svg>
 
-            <input type="search" placeholder="Cari makanan..." aria-label="Cari makanan">
+            <input id="nav-search" type="search" name="q" value="{{ keyword|default:'' }}" placeholder="Cari makanan..." aria-label="Cari makanan">
 
             <button type="button" class="location">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">

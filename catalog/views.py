@@ -135,10 +135,14 @@ def review_to_dict(review, user):
 # ================= katalog =================
 
 def catalog_list_view(request):
-    produk_list = [produk_to_dict(p) for p in ambil_produk_tersedia()]
+    # keyword dari search bar navbar (kalau user nyari dari halaman lain)
+    keyword = request.GET.get("q", "").strip()
+    hasil = filter_produk(ambil_produk_tersedia(), keyword, "all")
+    produk_list = [produk_to_dict(p) for p in hasil]
     context = {
         "produk_list": produk_list,
         "jumlah": len(produk_list),
+        "keyword": keyword,
     }
     return render(request, "catalog/catalog.html", context)
 

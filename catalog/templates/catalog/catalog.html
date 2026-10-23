@@ -29,17 +29,13 @@
     Rescue surplus food from local bakeries &amp; cafes at 50-70% off before closing time.
   </p>
 
-  <!-- search + filter harga -->
-  <div class="mt-8 flex flex-col lg:flex-row lg:items-center gap-3 border border-gray-300 rounded-2xl p-4">
-    <input id="search-input" type="text" placeholder="Search bread, cake, or store name..."
-           class="flex-1 bg-gray-100 rounded-full px-5 py-3 outline-none focus:ring-2 focus:ring-black">
-    <div class="flex flex-wrap items-center gap-2">
-      <span class="font-semibold mr-1">Price</span>
-      <button class="chip-harga bg-black text-white border border-black rounded-full px-4 py-2 text-sm font-medium" data-harga="all">All</button>
-      <button class="chip-harga bg-white border border-gray-300 rounded-full px-4 py-2 text-sm font-medium" data-harga="lt15">&lt; Rp15.000</button>
-      <button class="chip-harga bg-white border border-gray-300 rounded-full px-4 py-2 text-sm font-medium" data-harga="15to25">Rp15.000 - Rp25.000</button>
-      <button class="chip-harga bg-white border border-gray-300 rounded-full px-4 py-2 text-sm font-medium" data-harga="gt25">&gt; Rp25.000</button>
-    </div>
+  <!-- filter harga (search-nya udah pake search bar di navbar) -->
+  <div class="mt-8 flex flex-wrap items-center gap-2">
+    <span class="font-semibold mr-1">Price</span>
+    <button class="chip-harga bg-black text-white border border-black rounded-full px-4 py-2 text-sm font-medium" data-harga="all">All</button>
+    <button class="chip-harga bg-white border border-gray-300 rounded-full px-4 py-2 text-sm font-medium" data-harga="lt15">&lt; Rp15.000</button>
+    <button class="chip-harga bg-white border border-gray-300 rounded-full px-4 py-2 text-sm font-medium" data-harga="15to25">Rp15.000 - Rp25.000</button>
+    <button class="chip-harga bg-white border border-gray-300 rounded-full px-4 py-2 text-sm font-medium" data-harga="gt25">&gt; Rp25.000</button>
   </div>
 
   <!-- info jumlah paket -->
@@ -80,7 +76,9 @@
   const jsonUrl = "{% url 'catalog:catalog_json' %}";
   const detailUrl = "{% url 'catalog:catalog_detail' 'ID' %}";
 
-  const searchInput = document.getElementById("search-input");
+  // search bar-nya pake yang di navbar (base.html)
+  const searchInput = document.getElementById("nav-search");
+  const searchForm = searchInput.closest("form");
   const grid = document.getElementById("catalog-grid");
   const jumlahText = document.getElementById("jumlah-paket");
   const chips = document.querySelectorAll(".chip-harga");
@@ -125,6 +123,16 @@
     const hasil = await res.json();
 
     jumlahText.textContent = hasil.jumlah;
+
+    // update ?q= di url biar kalau di-refresh hasil search-nya ga ilang
+    const url = new URL(window.location);
+    if (searchInput.value.trim()) {
+      url.searchParams.set("q", searchInput.value.trim());
+    } else {
+      url.searchParams.delete("q");
+    }
+    history.replaceState(null, "", url);
+
     if (hasil.data.length === 0) {
       grid.innerHTML = `<p class="col-span-full text-gray-500">No mystery boxes match your search.</p>`;
     } else {
@@ -136,6 +144,13 @@
   searchInput.addEventListener("input", () => {
     clearTimeout(timer);
     timer = setTimeout(muatKatalog, 300);
+  });
+
+  // kalau lagi di halaman catalog, enter ga usah reload halaman
+  searchForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    clearTimeout(timer);
+    muatKatalog();
   });
 
   // filter harga: ganti warna chip yang aktif, terus ambil data baru
