@@ -41,12 +41,21 @@ class MerchantProductForm(forms.ModelForm):
 class ConsumerProfileForm(forms.ModelForm):
     username = forms.CharField(max_length=150)
 
+    phone_number = forms.CharField(
+        label="Nomor Telepon (+62)",
+        required=False,
+        help_text="Masukkan nomor setelah +62, contoh: 81234567890.",
+        widget=forms.TextInput(
+            attrs={
+                "placeholder": "81234567890",
+                "inputmode": "numeric",
+            }
+        ),
+    )
+
     class Meta:
         model = ConsumerProfile
         fields = ["phone_number"]
-        labels = {
-            "phone_number": "Nomor Telepon",
-        }
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user", None)
@@ -55,15 +64,60 @@ class ConsumerProfileForm(forms.ModelForm):
         if self.user:
             self.fields["username"].initial = self.user.username
 
+        # tampilkan nomor tanpa +62 agar pengguna hanya
+        
+        # mengisi bagian nomor setelah kode negara
+        if not self.is_bound and self.instance.phone_number:
+            phone = self.instance.phone_number
+            if phone.startswith("+62"):
+                phone = phone[3:]
+            elif phone.startswith("62"):
+                phone = phone[2:]
+            elif phone.startswith("0"):
+                phone = phone[1:]
+
+            self.fields["phone_number"].initial = phone
+
     def clean_username(self):
         username = self.cleaned_data["username"]
 
-        if User.objects.filter(username=username).exclude(
-            pk=self.user.pk
-        ).exists():
+        if (
+            User.objects.filter(username=username)
+            .exclude(pk=self.user.pk)
+            .exists()
+        ):
             raise forms.ValidationError("Username sudah digunakan.")
 
         return username
+
+    def clean_phone_number(self):
+        phone = self.cleaned_data["phone_number"].strip()
+
+        if not phone:
+            return ""
+
+        # izinkan pengguna menulis spasi ato tanda hubung
+        phone = phone.replace(" ", "").replace("-", "")
+
+        # terima juga format +62 ato 0 jika diketik manual
+        if phone.startswith("+62"):
+            phone = phone[3:]
+        elif phone.startswith("62"):
+            phone = phone[2:]
+        elif phone.startswith("0"):
+            phone = phone[1:]
+
+        if not phone.isdigit():
+            raise forms.ValidationError(
+                "Nomor telepon hanya boleh berisi angka."
+            )
+
+        if not 9 <= len(phone) <= 13:
+            raise forms.ValidationError(
+                "Nomor setelah +62 harus terdiri dari 9–13 digit."
+            )
+
+        return f"+62{phone}"
 
     def save(self, commit=True):
         profile = super().save(commit=False)
@@ -77,4 +131,3 @@ class ConsumerProfileForm(forms.ModelForm):
                 profile.save()
 
         return profile
-
