@@ -1,5 +1,8 @@
 from django import forms
 from .models import MerchantProduct
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.models import User
+from .models import ConsumerProfile
 
 
 class MerchantProductForm(forms.ModelForm):
@@ -32,3 +35,46 @@ class MerchantProductForm(forms.ModelForm):
             self.add_error("end_pickup", "Waktu selesai pickup harus setelah waktu mulai pickup.")
 
         return cleaned_data
+
+
+#CONSUMER PROFILE
+class ConsumerProfileForm(forms.ModelForm):
+    username = forms.CharField(max_length=150)
+
+    class Meta:
+        model = ConsumerProfile
+        fields = ["phone_number"]
+        labels = {
+            "phone_number": "Nomor Telepon",
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+        if self.user:
+            self.fields["username"].initial = self.user.username
+
+    def clean_username(self):
+        username = self.cleaned_data["username"]
+
+        if User.objects.filter(username=username).exclude(
+            pk=self.user.pk
+        ).exists():
+            raise forms.ValidationError("Username sudah digunakan.")
+
+        return username
+
+    def save(self, commit=True):
+        profile = super().save(commit=False)
+
+        if self.user:
+            self.user.username = self.cleaned_data["username"]
+
+            if commit:
+                self.user.save()
+                profile.user = self.user
+                profile.save()
+
+        return profile
+

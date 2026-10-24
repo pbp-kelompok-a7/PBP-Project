@@ -298,6 +298,7 @@ class MerchantLocationIntegrator(models.Model):
         return f"{self.name_merchant} ({self.id_merchant})"
     
 #Comsumer Profile
+#CONSUMER PROFILE
 class ConsumerProfile(models.Model):
     user = models.OneToOneField(
         User,

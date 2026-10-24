@@ -3,9 +3,13 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib import messages
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.contrib.auth.forms import (
+    AuthenticationForm,
+    PasswordChangeForm,
+    UserCreationForm,
+)
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -18,12 +22,22 @@ from django.views.decorators.cache import never_cache
 from django.db.models import Q
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
+from django.views.decorators.http import (
+    require_GET,
+    require_http_methods,
+    require_POST,
+)
+
 from .decorators import is_merchant, merchant_required as product_merchant_required
-from .forms import MerchantProductForm
-from .models import MerchantProduct
-from .decorators import merchant_required
-from .models import MerchantLocationIntegrator
-from .models import MerchantProduct, MerchantWallet, OrderSystem, UserProfile
+from .forms import ConsumerProfileForm, MerchantProductForm
+from .models import (
+    ConsumerProfile,
+    MerchantLocationIntegrator,
+    MerchantProduct,
+    MerchantWallet,
+    OrderSystem,
+    UserProfile,
+)
 
 
 PAYMENT_QR_PATTERN = re.compile(r"SBPAY-[A-F0-9]{12}", re.IGNORECASE)
@@ -591,7 +605,6 @@ def merchant_location(request):
                 "address": i.address,
                 "latitude": float(i.latitude),
                 "longitude": float(i.longitude),
-                "merchant": merchants,
             })
     
     context = {
@@ -600,3 +613,114 @@ def merchant_location(request):
         'search_query': query,
     }
     return render(request, 'merchant_loc.html', context)
+#BUILDING CONSUMER PROFILE 
+def get_consumer_profile(user):
+    """Mengambil atau membuat profil statistik konsumen."""
+    profile, _ = ConsumerProfile.objects.get_or_create(user=user)
+    return profile
+
+#LOGIN CONSUMER PROFILE
+@login_required(login_url="main:login")
+@never_cache
+def consumer_dashboard_view(request):
+    # makesure hanya akun consumer yg bisa membuka halaman ini
+    user_profile = UserProfile.objects.filter(user=request.user).first()
+    if not user_profile or user_profile.role != UserProfile.Role.CONSUMER:
+        messages.error(request, "Halaman ini khusus konsumen.")
+        return redirect("main:show_main")
+
+    consumer_profile = get_consumer_profile(request.user)
+    completed_orders = OrderSystem.objects.filter(
+        consumer=request.user,
+        payment_status=OrderSystem.PaymentStatus.COMPLETED,
+    )
+
+    # count penghematan dr selisih harga asli n harga diskon
+    total_saved = Decimal("0.00")
+    for order in completed_orders.select_related("product"):
+        original_price = order.product.real_price
+        discounted_price = order.unit_price
+        total_saved += max(
+            original_price - discounted_price, Decimal("0.00")
+        ) * order.quantity
+
+    consumer_profile.total_orders_completed = completed_orders.count()
+    consumer_profile.total_money_saved = total_saved
+    consumer_profile.save(update_fields=[
+        "total_orders_completed",
+        "total_money_saved",
+    ])
+
+    context = {
+        "consumer_profile": consumer_profile,
+        "total_orders_completed": consumer_profile.total_orders_completed,
+        "total_money_saved": consumer_profile.total_money_saved,
+        "total_co2_prevented": consumer_profile.total_co2_prevented,
+    }
+    return render(request, "consumer_dashboard_view.html", context)
+
+#EDIT CONSUMER PROFILE
+@login_required(login_url="main:login")
+@never_cache
+def edit_profile_view(request):
+    user_profile = UserProfile.objects.filter(user=request.user).first()
+    if not user_profile or user_profile.role != UserProfile.Role.CONSUMER:
+        messages.error(request, "Halaman ini khusus konsumen.")
+        return redirect("main:show_main")
+
+    consumer_profile = get_consumer_profile(request.user)
+
+    if request.method == "POST":
+        profile_form = ConsumerProfileForm(
+            request.POST, instance=consumer_profile, user=request.user
+        )
+        password_form = PasswordChangeForm(request.user, request.POST)
+
+        action = request.POST.get("action")
+        if action == "profile" and profile_form.is_valid():
+            profile_form.save()
+            messages.success(request, "Profil berhasil diperbarui.")
+            return redirect("main:edit_profile")
+
+        if action == "password" and password_form.is_valid():
+            user = password_form.save()
+            update_session_auth_hash(request, user)
+            messages.success(request, "Kata sandi berhasil diubah.")
+            return redirect("main:edit_profile")
+    else:
+        profile_form = ConsumerProfileForm(
+            instance=consumer_profile, user=request.user
+        )
+        password_form = PasswordChangeForm(request.user)
+
+    return render(request, "edit_profile_view.html", {
+        "profile_form": profile_form,
+        "password_form": password_form,
+    })
+
+#CONSUMER PROFILE ORDER HISTORY
+@login_required(login_url="main:login")
+@never_cache
+def order_history_view(request):
+    user_profile = UserProfile.objects.filter(user=request.user).first()
+    if not user_profile or user_profile.role != UserProfile.Role.CONSUMER:
+        messages.error(request, "Halaman ini khusus konsumen.")
+        return redirect("main:show_main")
+
+    orders = OrderSystem.objects.filter(
+        consumer=request.user
+    ).select_related("product").order_by("-created_at")
+
+    selected_status = request.GET.get("status", "")
+    valid_statuses = {
+        value for value, label in OrderSystem.PaymentStatus.choices
+    }
+    if selected_status in valid_statuses:
+        orders = orders.filter(payment_status=selected_status)
+
+    return render(request, "order_history_view.html", {
+        "orders": orders,
+        "selected_status": selected_status,
+        "status_choices": OrderSystem.PaymentStatus.choices,
+    })
+

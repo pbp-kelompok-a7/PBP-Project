@@ -1,0 +1,62 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Consumer — SisaBijak{% endblock title %}
+
+{% block content %}
+<main class="product-page">
+    <div class="product-heading">
+        <div>
+            <p class="eyebrow">Consumer Dashboard</p>
+            <h1>Profil Saya</h1>
+            <p>Lihat pesanan dan kontribusi Anda dalam mengurangi makanan terbuang.</p>
+        </div>
+        <a class="btn btn-dark" href="{% url 'main:order_history' %}">
+            Riwayat Pesanan
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <p class="flash-message">{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    <section class="merchant-account" aria-label="Informasi akun konsumen">
+        <div>
+            <span>Username</span>
+            <strong>{{ user.username }}</strong>
+        </div>
+        <div>
+            <span>Nomor Telepon</span>
+            <strong>{{ consumer_profile.phone_number|default:"Belum diisi" }}</strong>
+        </div>
+        <div>
+            <span>Pesanan Selesai</span>
+            <strong>{{ consumer_profile.total_orders_completed }}</strong>
+        </div>
+    </section>
+
+    <section class="consumer-stats">
+        <article>
+            <p>Total Uang Dihemat</p>
+            <h2>Rp{{ consumer_profile.total_money_saved|floatformat:0 }}</h2>
+        </article>
+
+        <article>
+            <p>Total Emisi Karbon Dicegah</p>
+            <h2>{{ consumer_profile.total_co2_prevented }} kg CO₂</h2>
+        </article>
+    </section>
+
+    <div class="product-heading">
+        <div>
+            <h2>Pengaturan Akun</h2>
+            <p>Perbarui informasi pribadi atau kata sandi Anda.</p>
+        </div>
+        <a class="btn btn-outline" href="{% url 'main:edit_profile' %}">
+            Edit Profil
+        </a>
+    </div>
+</main>
+{% endblock content %}

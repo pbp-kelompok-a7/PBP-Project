@@ -1,0 +1,58 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Edit Profil — SisaBijak{% endblock title %}
+
+{% block content %}
+<main class="product-page">
+    <div class="product-heading">
+        <div>
+            <p class="eyebrow">Consumer Account</p>
+            <h1>Edit Profil</h1>
+            <p>Perbarui nomor telepon atau kata sandi akun Anda.</p>
+        </div>
+        <a class="btn btn-outline" href="{% url 'main:consumer_dashboard' %}">
+            Kembali
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <p class="flash-message">{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    <section class="merchant-account">
+        <div>
+            <span>Username saat ini</span>
+            <strong>{{ user.username }}</strong>
+        </div>
+    </section>
+
+    <section class="consumer-stats">
+        <article>
+            <h2>Informasi Profil</h2>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="profile">
+                {{ profile_form.as_p }}
+                <button type="submit" class="btn btn-dark">
+                    Simpan Profil
+                </button>
+            </form>
+        </article>
+
+        <article>
+            <h2>Ubah Kata Sandi</h2>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="password">
+                {{ password_form.as_p }}
+                <button type="submit" class="btn btn-dark">
+                    Ubah Kata Sandi
+                </button>
+            </form>
+        </article>
+    </section>
+</main>
+{% endblock content %}
