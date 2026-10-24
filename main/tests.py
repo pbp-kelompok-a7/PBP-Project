@@ -12,7 +12,6 @@ from .models import MerchantProduct, MerchantWallet, OrderSystem, UserProfile
 
 class OrderSystemFlowTests(TestCase):
     @classmethod
-    
     def setUpTestData(cls):
         cls.consumer = User.objects.create_user(
             username="ayu",
@@ -249,3 +248,33 @@ class UserRoleTests(TestCase):
         self.client.force_login(user)
         response = self.client.get(reverse("main:product_view"))
         self.assertEqual(response.status_code, 200)
+
+
+class ConsumerProfileTests(TestCase):
+    def setUp(self):
+        self.consumer = User.objects.create_user(
+            username="consumer_profile_test",
+            password="OldPassword123!",
+        )
+        self.client.force_login(self.consumer)
+
+    def test_consumer_can_open_edit_profile_page(self):
+        response = self.client.get(reverse("main:edit_profile"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "edit_profile_view.html")
+        self.assertIn("profile_form", response.context)
+        self.assertIn("password_form", response.context)
+
+    def test_merchant_cannot_open_consumer_edit_profile_page(self):
+        merchant = User.objects.create_user(
+            username="merchant_profile_test",
+            password="OldPassword123!",
+        )
+        merchant.profile.role = UserProfile.Role.MERCHANT
+        merchant.profile.save()
+
+        self.client.force_login(merchant)
+        response = self.client.get(reverse("main:edit_profile"))
+
+        self.assertRedirects(response, reverse("main:show_main"))
