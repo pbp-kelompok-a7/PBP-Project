@@ -1,3 +1,4 @@
+
 from django.urls import path
 
 from . import views
@@ -83,4 +84,5 @@ urlpatterns = [
         views.product_delete,
         name="product_delete",
     ),
+    path("maps/", views.merchant_location, name= "merchant_location"),
 ]
