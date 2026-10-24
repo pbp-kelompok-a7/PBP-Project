@@ -1,6 +1,10 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block meta %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock meta %}
+
 {% block content %}
 <main>
     <section class="hero">
@@ -98,6 +102,8 @@
             </article>
         </div>
     </section>
+
+    {% include 'merchant_loc.html' %}
 
     <section class="impact" id="impact">
         <h2>Your Impact,<br>Made Visible</h2>

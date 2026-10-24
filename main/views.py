@@ -19,6 +19,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
+from django.db.models import Q
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
+
 from django.views.decorators.http import (
     require_GET,
     require_http_methods,
@@ -29,6 +32,7 @@ from .decorators import is_merchant, merchant_required as product_merchant_requi
 from .forms import ConsumerProfileForm, MerchantProductForm
 from .models import (
     ConsumerProfile,
+    MerchantLocationIntegrator,
     MerchantProduct,
     MerchantWallet,
     OrderSystem,
@@ -588,6 +592,33 @@ def product_delete(request, product_id):
         messages.success(request, "Produk berhasil dihapus.")
     return redirect("main:product_view")
 
+
+#Fitur Merchant Location Integrator
+
+def merchant_location(request):
+    query = request.GET.get('q', '').strip()
+    merchants = MerchantLocationIntegrator.objects.all()
+
+    if query:
+        merchants = merchants.filter(Q(name_merchant__icontains=query) | Q(address__icontains=query))
+
+    merchants_data = []
+    for i in merchants:
+        if i.latitude is not None and i.longitude is not None:
+            merchants_data.append({
+                "id_merchant": str(i.id_merchant),
+                "name_merchant": i.name_merchant,
+                "address": i.address,
+                "latitude": float(i.latitude),
+                "longitude": float(i.longitude),
+            })
+    
+    context = {
+        'merchants': merchants,
+        'merchants_data': merchants_data,
+        'search_query': query,
+    }
+    return render(request, 'merchant_loc.html', context)
 #BUILDING CONSUMER PROFILE 
 def get_consumer_profile(user):
     """Mengambil atau membuat profil statistik konsumen."""
