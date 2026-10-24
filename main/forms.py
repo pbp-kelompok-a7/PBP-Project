@@ -65,6 +65,7 @@ class ConsumerProfileForm(forms.ModelForm):
             self.fields["username"].initial = self.user.username
 
         # tampilkan nomor tanpa +62 agar pengguna hanya
+        
         # mengisi bagian nomor setelah kode negara
         if not self.is_bound and self.instance.phone_number:
             phone = self.instance.phone_number
