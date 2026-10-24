@@ -12,6 +12,7 @@ from .models import MerchantProduct, MerchantWallet, OrderSystem, UserProfile
 
 class OrderSystemFlowTests(TestCase):
     @classmethod
+    
     def setUpTestData(cls):
         cls.consumer = User.objects.create_user(
             username="ayu",
