@@ -7,6 +7,7 @@ from . import views
 app_name = "main"
 
 urlpatterns = [
+    # Main pages and authentication
     path("", views.show_main, name="show_main"),
     path("register/", views.register, name="register"),
     path("login/", views.login_user, name="login"),
@@ -14,7 +15,11 @@ urlpatterns = [
     path("logout/", views.logout_user, name="logout"),
 
     # Consumer profile
-    path("consumer/", views.consumer_dashboard_view, name="consumer_dashboard"),
+    path(
+        "consumer/",
+        views.consumer_dashboard_view,
+        name="consumer_dashboard",
+    ),
     path(
         "consumer/edit-profile/",
         views.edit_profile_view,
@@ -50,7 +55,11 @@ urlpatterns = [
         views.simulator_bayar_view,
         name="simulator_bayar",
     ),
-    path("orders/my-orders/", views.order_list_view, name="order_list"),
+    path(
+        "orders/my-orders/",
+        views.order_list_view,
+        name="order_list",
+    ),
     path(
         "orders/merchant/",
         views.merchant_order_list_view,
@@ -68,7 +77,11 @@ urlpatterns = [
     ),
 
     # Merchant products
-    path("merchant/products/", views.product_view, name="product_view"),
+    path(
+        "merchant/products/",
+        views.product_view,
+        name="product_view",
+    ),
     path(
         "merchant/products/create/",
         views.product_create,
@@ -84,5 +97,11 @@ urlpatterns = [
         views.product_delete,
         name="product_delete",
     ),
-    path("maps/", views.merchant_location, name= "merchant_location"),
+
+    # Merchant location integrator (PR #24)
+    path(
+        "maps/",
+        views.merchant_location,
+        name="merchant_location",
+    ),
 ]
