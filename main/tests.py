@@ -278,3 +278,31 @@ class ConsumerProfileTests(TestCase):
         response = self.client.get(reverse("main:edit_profile"))
 
         self.assertRedirects(response, reverse("main:show_main"))
+
+
+class ConsumerPasswordChangeTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="password_change_test",
+            password="OldPassword123!",
+        )
+        self.client.force_login(self.user)
+
+    def test_consumer_can_change_password(self):
+        response = self.client.post(
+            reverse("main:edit_profile"),
+            {
+                "action": "password",
+                "old_password": "OldPassword123!",
+                "new_password1": "NewPassword456!Secure",
+                "new_password2": "NewPassword456!Secure",
+            },
+        )
+
+        self.user.refresh_from_db()
+        self.assertTrue(
+            self.user.check_password("NewPassword456!Secure")
+        )
+        self.assertFalse(
+            self.user.check_password("OldPassword123!")
+        )
