@@ -7,7 +7,6 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
-
 from .models import MerchantProduct, MerchantWallet, OrderSystem, UserProfile
 
 
