@@ -79,8 +79,14 @@ def login_user(request):
 @login_required(login_url="main:login")
 @never_cache
 def profile(request):
-    return render(request, "profile.html")
+    user_profile = UserProfile.objects.filter(
+        user=request.user
+    ).first()
 
+    if user_profile and user_profile.role == UserProfile.Role.CONSUMER:
+        return consumer_dashboard_view(request)
+
+    return render(request, "profile.html")
 
 @never_cache
 def logout_user(request):
