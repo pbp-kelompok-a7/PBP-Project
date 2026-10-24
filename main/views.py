@@ -52,8 +52,14 @@ def login_user(request):
 @login_required(login_url="main:login")
 @never_cache
 def profile(request):
-    return render(request, "profile.html")
+    user_profile = UserProfile.objects.filter(
+        user=request.user
+    ).first()
 
+    if user_profile and user_profile.role == UserProfile.Role.CONSUMER:
+        return consumer_dashboard_view(request)
+
+    return render(request, "profile.html")
 
 @never_cache
 def logout_user(request):
@@ -163,7 +169,10 @@ def consumer_dashboard_view(request):
 @login_required(login_url="main:login")
 @never_cache
 def edit_profile_view(request):
-    user_profile = UserProfile.objects.filter(user=request.user).first()
+    user_profile = UserProfile.objects.filter(
+        user=request.user
+    ).first()
+
     if not user_profile or user_profile.role != UserProfile.Role.CONSUMER:
         messages.error(request, "Halaman ini khusus konsumen.")
         return redirect("main:show_main")
@@ -171,32 +180,58 @@ def edit_profile_view(request):
     consumer_profile = get_consumer_profile(request.user)
 
     if request.method == "POST":
-        profile_form = ConsumerProfileForm(
-            request.POST, instance=consumer_profile, user=request.user
-        )
-        password_form = PasswordChangeForm(request.user, request.POST)
-
         action = request.POST.get("action")
-        if action == "profile" and profile_form.is_valid():
-            profile_form.save()
-            messages.success(request, "Profil berhasil diperbarui.")
+
+        if action == "profile":
+            profile_form = ConsumerProfileForm(
+                request.POST,
+                instance=consumer_profile,
+                user=request.user,
+            )
+            password_form = PasswordChangeForm(request.user)
+
+            if profile_form.is_valid():
+                profile_form.save()
+                messages.success(
+                    request, "Profil berhasil diperbarui."
+                )
+                return redirect("main:edit_profile")
+
+        elif action == "password":
+            profile_form = ConsumerProfileForm(
+                instance=consumer_profile,
+                user=request.user,
+            )
+            password_form = PasswordChangeForm(
+                request.user, request.POST
+            )
+
+            if password_form.is_valid():
+                user = password_form.save()
+                update_session_auth_hash(request, user)
+                messages.success(
+                    request, "Kata sandi berhasil diubah."
+                )
+                return redirect("main:edit_profile")
+
+        else:
             return redirect("main:edit_profile")
 
-        if action == "password" and password_form.is_valid():
-            user = password_form.save()
-            update_session_auth_hash(request, user)
-            messages.success(request, "Kata sandi berhasil diubah.")
-            return redirect("main:edit_profile")
     else:
         profile_form = ConsumerProfileForm(
-            instance=consumer_profile, user=request.user
+            instance=consumer_profile,
+            user=request.user,
         )
         password_form = PasswordChangeForm(request.user)
 
-    return render(request, "edit_profile_view.html", {
-        "profile_form": profile_form,
-        "password_form": password_form,
-    })
+    return render(
+        request,
+        "edit_profile_view.html",
+        {
+            "profile_form": profile_form,
+            "password_form": password_form,
+        },
+    )
 
 #CONSUMER PROFILE ORDER HISTORY
 @login_required(login_url="main:login")

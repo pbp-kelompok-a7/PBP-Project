@@ -13,7 +13,6 @@ urlpatterns = [
     path("merchant/products/create/", views.product_create, name="product_create"),
     path("merchant/products/<str:product_id>/edit/", views.product_update, name="product_update"),
     path("merchant/products/<str:product_id>/delete/", views.product_delete, name="product_delete"),
-    path("consumer/", views.consumer_dashboard_view, name="consumer_dashboard"), #consumer profile
     path("consumer/edit-profile/", views.edit_profile_view, name="edit_profile"), #consumer edit profile
     path("consumer/orders/", views.order_history_view, name="order_history"), #consumer order history
 ]
