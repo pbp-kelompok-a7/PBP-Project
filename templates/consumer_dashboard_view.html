@@ -14,6 +14,13 @@
         <a class="btn btn-dark" href="{% url 'main:order_history' %}">
             Riwayat Pesanan
         </a>
+         <form method="post" action="{% url 'main:logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline">
+                    Logout
+                </button>
+            </form>
+        </div>
     </div>
 
     {% if messages %}

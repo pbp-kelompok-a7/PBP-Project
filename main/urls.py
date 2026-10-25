@@ -14,12 +14,7 @@ urlpatterns = [
     path("profile/", views.profile, name="profile"),
     path("logout/", views.logout_user, name="logout"),
 
-    # Consumer profile
-    path(
-        "consumer/",
-        views.consumer_dashboard_view,
-        name="consumer_dashboard",
-    ),
+    #ConsumerProfile
     path(
         "consumer/edit-profile/",
         views.edit_profile_view,
