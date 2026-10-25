@@ -690,6 +690,7 @@ def merchant_location(request):
     
     context = {
         'merchants': merchants,
+        'nearby': merchants,
         'merchants_data': merchants_data,
         'search_query': query,
     }
