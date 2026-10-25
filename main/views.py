@@ -1,6 +1,11 @@
-import re
+import base64
 from datetime import timedelta
 from decimal import Decimal
+from io import BytesIO
+
+import qrcode
+import zxingcpp
+from PIL import Image, UnidentifiedImageError
 
 from django.contrib import messages
 from django.contrib.auth import login, logout, update_session_auth_hash
@@ -11,7 +16,8 @@ from django.contrib.auth.forms import (
     UserCreationForm,
 )
 from django.contrib.auth.models import User
-from django.core.exceptions import ValidationError
+from django.core import signing
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import F
 from django.http import Http404, JsonResponse
@@ -37,10 +43,12 @@ from .models import (
     MerchantWallet,
     OrderSystem,
     UserProfile,
+    generate_payment_qr_id,
 )
 
 
-PAYMENT_QR_PATTERN = re.compile(r"SBPAY-[A-F0-9]{12}", re.IGNORECASE)
+PAYMENT_QR_SALT = "orders.payment"
+PAYMENT_QR_PREFIX = "SISABIJAK-PAY:"
 
 @never_cache
 def show_main(request):
@@ -65,7 +73,7 @@ def login_user(request):
     if request.method == "POST" and form.is_valid():
         user = form.get_user()
         login(request, user)
-        destination = "main:merchant_orders" if _is_merchant(user) else "main:show_main"
+        destination = "main:product_view" if _is_merchant(user) else "main:show_main"
         response = redirect(destination)
         response.set_cookie(
             "last_login",
@@ -115,10 +123,6 @@ def _is_consumer(user):
 
 consumer_required = user_passes_test(_is_consumer, login_url="main:login")
 merchant_required = user_passes_test(_is_merchant, login_url="main:login")
-simulator_required = user_passes_test(
-    lambda user: _is_consumer(user) or _is_admin(user),
-    login_url="main:login",
-)
 merchant_or_admin_required = user_passes_test(
     lambda user: _is_merchant(user) or _is_admin(user),
     login_url="main:login",
@@ -158,70 +162,179 @@ def _get_consumer_order(user, pk):
     return get_object_or_404(queryset, pk=pk, consumer=user)
 
 
+def _payment_orders(order):
+    """One row per product; a shared QR prefix groups a cart without a new model."""
+    orders = OrderSystem.objects.select_for_update(of=("self",)).select_related(
+        "product", "product__merchant", "consumer"
+    ).filter(consumer=order.consumer)
+    prefix, _, line = order.payment_qr_id.rpartition("-")
+    if prefix.startswith("SBPAY-") and len(prefix) == 18 and line.isdigit():
+        orders = orders.filter(payment_qr_id__startswith=prefix + "-")
+    else:
+        orders = orders.filter(pk=order.pk)
+    orders = list(orders.order_by("pk"))
+    payment_expired = any(
+        item.is_payment_expired
+        or item.payment_status == OrderSystem.PaymentStatus.EXPIRED
+        for item in orders
+    )
+    for item in orders:
+        if payment_expired and item.payment_status == OrderSystem.PaymentStatus.PENDING:
+            item.payment_status = OrderSystem.PaymentStatus.EXPIRED
+            item.save(update_fields=("payment_status",))
+            _restore_stock(item)
+        else:
+            _expire_locked_order(item)
+    return orders
+
+
+def _payment_data(orders):
+    return {
+        "consumer": orders[0].consumer_id,
+        "items": [[item.payment_qr_id, str(item.total_price)] for item in orders],
+    }
+
+
+def _payment_context(orders):
+    statuses = {item.payment_status for item in orders}
+    if OrderSystem.PaymentStatus.EXPIRED in statuses:
+        status = OrderSystem.PaymentStatus.EXPIRED
+    elif statuses == {OrderSystem.PaymentStatus.COMPLETED}:
+        status = OrderSystem.PaymentStatus.COMPLETED
+    elif statuses <= {OrderSystem.PaymentStatus.PAID, OrderSystem.PaymentStatus.COMPLETED}:
+        status = OrderSystem.PaymentStatus.PAID
+    else:
+        status = OrderSystem.PaymentStatus.PENDING
+    return {
+        "order": orders[0],
+        "payment_orders": orders,
+        "payment_total": sum((item.total_price for item in orders), Decimal("0")),
+        "payment_deadline": min(item.payment_deadline for item in orders),
+        "payment_status": status,
+        "payment_status_label": status.label,
+    }
+
+
+def _read_payment_qr(upload):
+    if upload.size > 5 * 1024 * 1024:
+        raise ValidationError("Ukuran gambar maksimal 5 MB.")
+    try:
+        upload.seek(0)
+        with Image.open(upload) as picture:
+            if picture.format not in ("PNG", "JPEG", "WEBP") or picture.width * picture.height > 16000000:
+                raise ValidationError("Gunakan gambar PNG, JPG, atau WebP maksimal 16 megapiksel.")
+            codes = zxingcpp.read_barcodes(
+                picture.convert("RGB"), formats=zxingcpp.BarcodeFormat.QRCode
+            )
+        if len(codes) != 1 or not codes[0].text.startswith(PAYMENT_QR_PREFIX):
+            raise ValidationError("Gambar harus memuat satu SisaBayarQR yang valid.")
+        token = codes[0].text[len(PAYMENT_QR_PREFIX):]
+        signing.loads(token, salt=PAYMENT_QR_SALT)
+        return token
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError, signing.BadSignature):
+        raise ValidationError("Gambar atau tanda tangan SisaBayarQR tidak valid.")
+    finally:
+        upload.seek(0)
+
+
 @consumer_required
 @never_cache
 @require_http_methods(["GET", "POST"])
 def checkout_view(request, product_id=None):
-    products = MerchantProduct.objects.filter(
-        product_status=MerchantProduct.Status.AVAILABLE,
-        product_stock__gt=0,
-        end_pickup__gt=timezone.now() + timedelta(minutes=15),
-    ).select_related("merchant")
-    product = get_object_or_404(products, pk=product_id) if product_id else products.first()
+    cart = request.session.get("order_cart", {})
+    if product_id is not None:
+        product = get_object_or_404(MerchantProduct, pk=product_id)
+        if (
+            product.product_status != MerchantProduct.Status.AVAILABLE
+            or product.product_stock < 1
+            or product.end_pickup <= timezone.now() + timedelta(minutes=15)
+        ):
+            messages.error(request, "Produk habis atau waktu pickup sudah tidak tersedia.")
+            return redirect("main:checkout")
+        # The existing catalog links here; reloading must not increase quantity.
+        cart.setdefault(str(product.pk), 1)
+        request.session["order_cart"] = cart
+        if request.method == "GET":
+            return redirect("main:checkout")
 
     if request.method == "POST":
-        if product is None:
-            messages.error(request, "Belum ada produk yang tersedia untuk dipesan.")
+        remove_id = request.POST.get("remove_product")
+        if remove_id:
+            cart.pop(remove_id, None)
+            request.session["order_cart"] = cart
             return redirect("main:checkout")
         try:
-            quantity = int(request.POST.get("quantity", "1"))
-        except ValueError:
-            quantity = 0
-
-        if quantity < 1 or quantity > 10:
-            messages.error(request, "Jumlah pesanan harus antara 1 sampai 10.")
-            return redirect("main:checkout_product", product_id=product.pk)
+            quantities = {
+                key: int(request.POST.get(
+                    f"quantity_{key}",
+                    request.POST.get("quantity", value) if product_id == key else value,
+                ))
+                for key, value in cart.items()
+            }
+            if not quantities or any(qty < 1 or qty > 10 for qty in quantities.values()):
+                raise ValueError
+        except (ValueError, TypeError):
+            messages.error(request, "Pilih produk dan isi jumlah 1 sampai 10 per produk.")
+            return redirect("main:checkout")
+        request.session["order_cart"] = quantities
+        if request.POST.get("action") == "update":
+            messages.success(request, "Keranjang diperbarui.")
+            return redirect("main:checkout")
 
         with transaction.atomic():
-            locked_product = get_object_or_404(
-                MerchantProduct.objects.select_for_update(),
-                pk=product.pk,
-            )
-            if (
-                locked_product.product_status != MerchantProduct.Status.AVAILABLE
-                or locked_product.product_stock < quantity
-                or locked_product.end_pickup <= timezone.now() + timedelta(minutes=15)
+            products = list(MerchantProduct.objects.select_for_update().filter(
+                pk__in=quantities
+            ).order_by("pk"))
+            if len(products) != len(quantities) or any(
+                product.product_status != MerchantProduct.Status.AVAILABLE
+                or product.product_stock < quantities[product.pk]
+                or product.end_pickup <= timezone.now() + timedelta(minutes=15)
+                for product in products
             ):
-                messages.error(request, "Produk sudah habis atau waktu pickup telah lewat.")
-                return redirect("main:checkout_product", product_id=product.pk)
+                messages.error(request, "Stok atau jadwal pickup berubah. Periksa kembali keranjang.")
+                return redirect("main:checkout")
 
-            locked_product.product_stock -= quantity
-            if locked_product.product_stock == 0:
-                locked_product.product_status = MerchantProduct.Status.SOLD_OUT
-            locked_product.save(update_fields=("product_stock", "product_status"))
+            payment_id = generate_payment_qr_id()
+            orders = []
+            for index, product in enumerate(products, 1):
+                quantity = quantities[product.pk]
+                orders.append(OrderSystem.objects.create(
+                    consumer=request.user, product=product, quantity=quantity,
+                    unit_price=product.discount_price,
+                    total_price=product.discount_price * quantity,
+                    payment_qr_id=f"{payment_id}-{index:03d}",
+                    pickup_deadline=product.end_pickup,
+                ))
+                product.product_stock -= quantity
+                if product.product_stock == 0:
+                    product.product_status = MerchantProduct.Status.SOLD_OUT
+                product.save(update_fields=("product_stock", "product_status"))
 
-            unit_price = locked_product.discount_price
-            order = OrderSystem.objects.create(
-                consumer=request.user,
-                product=locked_product,
-                quantity=quantity,
-                unit_price=unit_price,
-                total_price=unit_price * quantity,
-                payment_status=OrderSystem.PaymentStatus.PENDING,
-                pickup_deadline=locked_product.end_pickup,
-            )
+        request.session["order_cart"] = {}
+        return redirect("main:payment_detail", pk=orders[0].pk)
 
-        return redirect("main:payment_detail", pk=order.pk)
-
-    context = {
-        "screen": "checkout",
-        "screen_config": _screen("Checkout", "consumer"),
-        "product": product,
-        "products": products,
-        "tentative_pickup_start": product.start_pickup if product else None,
-        "tentative_pickup_deadline": product.end_pickup if product else None,
-    }
-    return render(request, "checkout_payment.html", context)
+    items = []
+    for product in MerchantProduct.objects.filter(pk__in=cart).select_related("merchant"):
+        quantity = cart[product.pk]
+        items.append({
+            "product": product, "quantity": quantity,
+            "total": product.discount_price * quantity,
+            "original": product.real_price * quantity,
+            "available": (
+                product.product_status == MerchantProduct.Status.AVAILABLE
+                and product.product_stock >= quantity
+                and product.end_pickup > timezone.now() + timedelta(minutes=15)
+            ),
+        })
+    request.session["order_cart"] = {item["product"].pk: item["quantity"] for item in items}
+    total = sum((item["total"] for item in items), Decimal("0"))
+    original = sum((item["original"] for item in items), Decimal("0"))
+    return render(request, "checkout_payment.html", {
+        "screen": "checkout", "screen_config": _screen("Keranjang", "consumer"),
+        "cart_items": items, "cart_total": total, "cart_original": original,
+        "cart_savings": original - total,
+        "can_checkout": bool(items) and all(item["available"] for item in items),
+    })
 
 
 @consumer_required
@@ -238,140 +351,100 @@ def payment_view(request, pk=None):
         return redirect("main:payment_detail", pk=latest.pk)
 
     with transaction.atomic():
-        order = _get_consumer_order(request.user, pk)
-        locked_order = OrderSystem.objects.select_for_update().get(pk=order.pk)
-        _expire_locked_order(locked_order)
-        order = _get_consumer_order(request.user, pk)
-
-    context = {
-        "screen": "payment",
-        "screen_config": _screen("Pembayaran", "consumer"),
-        "order": order,
-        "status_url": reverse("main:payment_status", args=(order.pk,)),
-        "order_list_url": f"{reverse('main:order_list')}?highlight={order.pk}",
-    }
+        orders = _payment_orders(_get_consumer_order(request.user, pk))
+    token = signing.dumps(_payment_data(orders), salt=PAYMENT_QR_SALT, compress=True)
+    image = BytesIO()
+    qrcode.make(PAYMENT_QR_PREFIX + token).save(image, format="PNG")
+    context = _payment_context(orders)
+    context.update({
+        "screen": "payment", "screen_config": _screen("Pembayaran", "consumer"),
+        "payment_qr_image": "data:image/png;base64," + base64.b64encode(image.getvalue()).decode(),
+        "status_url": reverse("main:payment_status", args=(pk,)),
+        "order_list_url": f"{reverse('main:order_list')}?highlight={pk}",
+    })
     return render(request, "checkout_payment.html", context)
 
 
 @login_required(login_url="main:login")
+@never_cache
 @require_GET
 def payment_status_view(request, pk):
-    order = _get_consumer_order(request.user, pk)
     with transaction.atomic():
-        locked_order = OrderSystem.objects.select_for_update().get(pk=order.pk)
-        _expire_locked_order(locked_order)
-
-    return JsonResponse(
-        {
-            "status": locked_order.payment_status,
-            "status_label": locked_order.get_payment_status_display(),
-            "redirect_url": (
-                f"{reverse('main:order_list')}?highlight={locked_order.pk}"
-                if locked_order.payment_status
-                in (
-                    OrderSystem.PaymentStatus.PAID,
-                    OrderSystem.PaymentStatus.COMPLETED,
-                )
-                else None
-            ),
-        }
-    )
+        context = _payment_context(_payment_orders(_get_consumer_order(request.user, pk)))
+    return JsonResponse({
+        "status": context["payment_status"],
+        "status_label": context["payment_status_label"],
+        "redirect_url": (
+            f"{reverse('main:order_list')}?highlight={pk}"
+            if context["payment_status"] in (OrderSystem.PaymentStatus.PAID, OrderSystem.PaymentStatus.COMPLETED) else None
+        ),
+    })
 
 
-@simulator_required
+@login_required(login_url="main:login")
 @never_cache
 @require_http_methods(["GET", "POST"])
 def simulator_bayar_view(request):
-    order_id = request.POST.get("order_id") or request.GET.get("order")
-    orders = OrderSystem.objects.select_related("product")
     if not _is_admin(request.user):
-        orders = orders.filter(consumer=request.user)
-
-    order = orders.filter(pk=order_id).first() if order_id else None
-    if order is None and _is_consumer(request.user):
-        order = orders.filter(
-            payment_status=OrderSystem.PaymentStatus.PENDING
-        ).first()
-
-    if request.method == "POST" and request.POST.get("action") == "scan":
-        upload = request.FILES.get("payment_proof")
-        if upload is None:
-            messages.error(request, "Pilih foto bukti pembayaran terlebih dahulu.")
-        elif upload.size > 5 * 1024 * 1024 or not (
-            upload.content_type or ""
-        ).startswith("image/"):
-            messages.error(request, "File harus berupa gambar dengan ukuran maksimal 5 MB.")
-        else:
-            if order is None:
-                match = PAYMENT_QR_PATTERN.search(upload.name)
-                if match:
-                    order = orders.filter(
-                        payment_qr_id__iexact=match.group(0)
-                    ).first()
-
-            if order is None:
-                messages.error(
-                    request,
-                    "Pesanan tidak ditemukan. Buka simulator dari halaman pembayaran pesanan.",
-                )
-            else:
-                with transaction.atomic():
-                    locked_orders = OrderSystem.objects.select_for_update().select_related(
-                        "product"
-                    )
-                    if not _is_admin(request.user):
-                        locked_orders = locked_orders.filter(consumer=request.user)
-                    locked_order = locked_orders.filter(pk=order.pk).first()
-
-                    if locked_order is None:
-                        messages.error(request, "Pesanan tidak dapat diakses.")
-                    elif _expire_locked_order(locked_order):
-                        order = locked_order
-                        messages.error(request, "Waktu pembayaran sudah habis.")
-                    elif locked_order.payment_status != OrderSystem.PaymentStatus.PENDING:
-                        order = locked_order
-                        messages.info(request, "Pembayaran pesanan ini sudah diproses.")
-                    else:
-                        locked_order.payment_proof = upload
-                        locked_order.save(update_fields=("payment_proof",))
-                        order = locked_order
-                        messages.success(
-                            request,
-                            "Bukti pembayaran tersimpan. Periksa rincian lalu konfirmasi.",
-                        )
-
-    if request.method == "POST" and request.POST.get("action") == "confirm":
-        qr_id = request.POST.get("payment_qr_id", "")
-        with transaction.atomic():
-            lookup = {"payment_qr_id": qr_id}
-            if not _is_admin(request.user):
-                lookup["consumer"] = request.user
-            order = get_object_or_404(
-                OrderSystem.objects.select_for_update().select_related("product"),
-                **lookup,
-            )
-            if _expire_locked_order(order):
-                messages.error(request, "Waktu pembayaran sudah habis.")
-                return redirect(f"{reverse('main:simulator_bayar')}?order={order.pk}")
-            if not order.payment_proof:
-                messages.error(request, "Unggah bukti pembayaran sebelum konfirmasi.")
-                return redirect(f"{reverse('main:simulator_bayar')}?order={order.pk}")
-            try:
-                order.mark_paid()
-            except ValidationError as error:
-                messages.error(request, "; ".join(error.messages))
-                return redirect(f"{reverse('main:simulator_bayar')}?order={order.pk}")
-
-        messages.success(request, "Pembayaran berhasil. QR klaim sudah dibuat.")
-        if order.consumer_id == request.user.id:
-            return redirect(f"{reverse('main:order_list')}?highlight={order.pk}")
-        return redirect("main:show_main")
+        raise PermissionDenied("Simulator pembayaran khusus admin.")
 
     context = {
-        "screen": "simulator",
-        "screen_config": _screen("Simulator Pembayaran", "consumer"),
-        "order": order,
+        "screen": "simulator", "screen_config": _screen("Simulator Pembayaran", "admin"),
     }
+    if request.method == "POST":
+        action = request.POST.get("action")
+        try:
+            if action == "scan":
+                request.session.pop("verified_payment", None)
+                upload = request.FILES.get("payment_proof")
+                if upload is None:
+                    raise ValidationError("Pilih gambar SisaBayarQR terlebih dahulu.")
+                token = _read_payment_qr(upload)
+            elif action == "confirm":
+                token = request.POST.get("payment_token")
+                if not token or token != request.session.get("verified_payment"):
+                    raise ValidationError("Unggah dan verifikasi SisaBayarQR sebelum konfirmasi.")
+            else:
+                raise ValidationError("Aksi pembayaran tidak valid.")
+
+            payload = signing.loads(token, salt=PAYMENT_QR_SALT)
+            with transaction.atomic():
+                first = OrderSystem.objects.filter(
+                    payment_qr_id=payload["items"][0][0], consumer_id=payload["consumer"]
+                ).first()
+                if first is None:
+                    raise ValidationError("Pesanan pada QR tidak ditemukan.")
+                orders = _payment_orders(first)
+                if payload != _payment_data(orders):
+                    raise ValidationError("QR tidak cocok dengan rincian atau total pembayaran.")
+                if any(item.payment_status != OrderSystem.PaymentStatus.PENDING for item in orders):
+                    request.session.pop("verified_payment", None)
+                    messages.error(request, "Pembayaran sudah diproses atau waktu pembayaran habis.")
+                    return redirect("main:simulator_bayar")
+                if action == "scan":
+                    orders[0].payment_proof.save(upload.name, upload, save=True)
+                else:
+                    proof = orders[0].payment_proof
+                    if not proof:
+                        raise ValidationError("SisaBayarQR belum diunggah.")
+                    with proof.open("rb") as saved_image:
+                        if _read_payment_qr(saved_image) != token:
+                            raise ValidationError("Gambar pembayaran berubah. Unggah ulang SisaBayarQR.")
+                    for item in orders:
+                        item.mark_paid()
+
+            if action == "confirm":
+                request.session.pop("verified_payment", None)
+                messages.success(request, "Pembayaran berhasil. QR klaim tersedia pada Pesanan Saya.")
+                return redirect("main:simulator_bayar")
+            request.session["verified_payment"] = token
+            context.update(_payment_context(orders))
+            context["payment_token"] = token
+            messages.success(request, "SisaBayarQR valid. Periksa rincian sebelum konfirmasi.")
+        except (ValidationError, signing.BadSignature, KeyError, IndexError, TypeError, OSError) as error:
+            request.session.pop("verified_payment", None)
+            message = "; ".join(error.messages) if isinstance(error, ValidationError) else "SisaBayarQR tidak valid. Silakan unggah ulang."
+            messages.error(request, message)
     return render(request, "simulator_bayar.html", context)
 
 
@@ -426,20 +499,22 @@ def merchant_order_list_view(request):
                 locked = OrderSystem.objects.select_for_update().get(pk=current.pk)
                 _expire_locked_order(locked)
 
+    merchant_tab = "history" if request.GET.get("tab") == "history" else "incoming"
+    status = OrderSystem.PaymentStatus.COMPLETED if merchant_tab == "history" else OrderSystem.PaymentStatus.PAID
+    displayed_orders = orders.filter(payment_status=status)
     selected = None
     selected_id = request.GET.get("selected")
     if selected_id:
-        selected = orders.filter(pk=selected_id).first()
+        selected = displayed_orders.filter(pk=selected_id).first()
     if selected is None:
-        selected = (
-            orders.filter(payment_status=OrderSystem.PaymentStatus.PAID).first()
-            or orders.first()
-        )
+        selected = displayed_orders.first()
 
     wallet, _ = MerchantWallet.objects.get_or_create(merchant=request.user)
     context = {
         "screen": "merchant",
         "screen_config": _screen("Pesanan Masuk", "merchant"),
+        "merchant_tab": merchant_tab,
+        "displayed_orders": displayed_orders,
         "incoming_orders": orders.filter(
             payment_status=OrderSystem.PaymentStatus.PAID
         ),
@@ -507,7 +582,7 @@ def validate_claim_view(request):
             "QR valid. Pesanan selesai dan saldo merchant diperbarui.",
         )
         return redirect(
-            f"{reverse('main:merchant_orders')}?selected={locked_order.pk}"
+            f"{reverse('main:merchant_orders')}?tab=history&selected={locked_order.pk}"
         )
 
     context = {

@@ -5,7 +5,7 @@
 <div class="merchant-heading-row">
     <section class="page-heading merchant-heading">
         <span class="eyebrow">Dashboard Merchant</span>
-        <h1>Pesanan Masuk</h1>
+        <h1>{% if merchant_tab == 'history' %}Riwayat Redeem{% else %}Pesanan Masuk{% endif %}</h1>
         <p>Kelola pesanan dan validasi QR saat pengambilan.</p>
     </section>
     <div class="revenue-card">
@@ -22,21 +22,14 @@
     <section class="panel merchant-order-list">
         <header class="panel-header"><h2>Daftar Pesanan</h2><a href="{% url 'main:validate_claim' %}">Input kode klaim</a></header>
         <div class="merchant-orders">
-            {% for order in incoming_orders %}
-                <a class="merchant-order-row{% if selected_order.pk == order.pk %} selected{% endif %}" href="{% url 'main:merchant_orders' %}?selected={{ order.pk }}">
-                    <span class="order-id"><strong>{{ order.order_number }}</strong><small>{{ order.created_at|date:'H:i' }}</small></span>
+            {% for order in displayed_orders %}
+                <a class="merchant-order-row{% if selected_order.pk == order.pk %} selected{% endif %}" href="{% url 'main:merchant_orders' %}?tab={{ merchant_tab }}&amp;selected={{ order.pk }}">
+                    <span class="order-id"><strong>{{ order.order_number }}</strong><small>{{ order.created_at|date:'d M Y, H:i' }}</small></span>
                     <span class="order-customer"><strong>{{ order.consumer.get_full_name|default:order.consumer.username }}</strong><small>{{ order.product.nama_produk }} ({{ order.quantity }})</small></span>
-                    <span class="order-row-status"><em class="status-badge status-ready">Siap diklaim</em><strong>{{ order.total_price|rupiah }}</strong></span><span>›</span>
+                    <span class="order-row-status"><em class="status-badge status-{{ order.payment_status|order_status_class }}">{{ order.get_payment_status_display }}</em><strong>{{ order.total_price|rupiah }}</strong></span><span>›</span>
                 </a>
             {% empty %}
-                <div class="empty-list">Tidak ada pesanan yang siap diklaim.</div>
-            {% endfor %}
-            {% for order in history_orders|slice:':3' %}
-                <a class="merchant-order-row{% if selected_order.pk == order.pk %} selected{% endif %}" href="{% url 'main:merchant_orders' %}?selected={{ order.pk }}">
-                    <span class="order-id"><strong>{{ order.order_number }}</strong><small>{{ order.created_at|date:'H:i' }}</small></span>
-                    <span class="order-customer"><strong>{{ order.consumer.get_full_name|default:order.consumer.username }}</strong><small>{{ order.product.nama_produk }} ({{ order.quantity }})</small></span>
-                    <span class="order-row-status"><em class="status-badge status-done">Selesai</em><strong>{{ order.total_price|rupiah }}</strong></span><span>›</span>
-                </a>
+                <div class="empty-list">{% if merchant_tab == 'history' %}Belum ada pesanan selesai ditukar.{% else %}Tidak ada pesanan yang siap diklaim.{% endif %}</div>
             {% endfor %}
         </div>
     </section>

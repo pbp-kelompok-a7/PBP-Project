@@ -7,12 +7,18 @@
     <div class="product-heading">
         <div>
             <p class="eyebrow">Merchant Dashboard</p>
-            <h1>Produk Anda</h1>
-            <p>Kelola stok, harga, status, dan jadwal pickup produk Anda.</p>
+            <h1>Dashboard Merchant</h1>
+            <p>Kelola produk, pesanan masuk, riwayat redeem, dan validasi kode pengambilan.</p>
         </div>
-        <a class="btn btn-outline" href="{% url 'main:merchant_orders' %}">Pesanan Masuk</a>
         <a class="btn btn-dark" href="{% url 'main:product_create' %}">+ Tambah Produk</a>
     </div>
+
+    <nav class="order-section-nav" aria-label="Dashboard merchant">
+        <a class="secondary-button" href="{% url 'main:product_view' %}" aria-current="page">Dashboard &amp; Produk</a>
+        <a class="secondary-button" href="{% url 'main:merchant_orders' %}">Pesanan Masuk</a>
+        <a class="secondary-button" href="{% url 'main:merchant_orders' %}?tab=history">Riwayat Redeem</a>
+        <a class="secondary-button" href="{% url 'main:validate_claim' %}">Validasi Kode</a>
+    </nav>
 
     {% if messages %}
         {% for message in messages %}<p class="flash-message">{{ message }}</p>{% endfor %}

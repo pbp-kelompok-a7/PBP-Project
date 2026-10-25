@@ -3,52 +3,44 @@
 
 {% block order_content %}
 <section class="page-heading">
-    <span class="eyebrow">Halaman Rahasia</span>
     <h1>Simulator Pembayaran</h1>
-    <p>Unggah foto atau tangkapan layar bukti pembayaran untuk pesanan Anda.</p>
+    <p>Khusus admin. Unggah SisaBayarQR untuk memeriksa dan mengonfirmasi pembayaran.</p>
 </section>
-
 <div class="simulator-layout">
     <form method="post" enctype="multipart/form-data" class="panel simulator-upload-card">
         {% csrf_token %}
         <input type="hidden" name="action" value="scan">
-        {% if order %}<input type="hidden" name="order_id" value="{{ order.pk }}">{% endif %}
         <label class="file-drop" for="payment-proof">
             <input id="payment-proof" name="payment_proof" type="file" accept="image/png,image/jpeg,image/webp" required>
-            <strong>Pilih foto bukti pembayaran</strong>
+            <strong>Pilih gambar SisaBayarQR</strong>
             <span>PNG, JPG, atau WebP - maksimal 5 MB</span>
         </label>
         <span class="file-name" id="payment-file-name">Belum ada file dipilih</span>
-        <button class="primary-button" id="scan-payment" type="submit">Upload Bukti Pembayaran</button>
+        <button class="primary-button" id="scan-payment" type="submit">Periksa SisaBayarQR</button>
     </form>
-
     <section class="panel simulator-result-card">
         {% if order %}
-            <h2>Rincian Pesanan</h2>
+            <h2>Rincian Pembayaran</h2>
             <dl class="detail-list">
-                <div><dt>Order ID</dt><dd>{{ order.order_number }}</dd></div>
-                <div><dt>Produk</dt><dd>{{ order.product.nama_produk }}</dd></div>
-                <div><dt>Jumlah</dt><dd>{{ order.quantity }}</dd></div>
-                <div><dt>Total</dt><dd>{{ order.total_price|rupiah }}</dd></div>
-                <div><dt>Status</dt><dd>{{ order.get_payment_status_display }}</dd></div>
-                <div><dt>Bukti</dt><dd>{% if order.payment_proof %}{{ order.payment_proof.name }}{% else %}Belum diunggah{% endif %}</dd></div>
+                <div><dt>Pembeli</dt><dd>{{ order.consumer.get_full_name|default:order.consumer.username }}</dd></div>
+                {% for item in payment_orders %}
+                    <div><dt>{{ item.order_number }}<br>{{ item.product.product_name }} × {{ item.quantity }}<br><small>{{ item.product.merchant_name }}</small></dt><dd>{{ item.total_price|rupiah }}</dd></div>
+                {% endfor %}
+                <div><dt>Total Pembayaran</dt><dd>{{ payment_total|rupiah }}</dd></div>
+                <div><dt>Status</dt><dd>{{ payment_status_label }}</dd></div>
             </dl>
-            {% if order.payment_status == 'pending' and order.payment_proof %}
+            {% if payment_token %}
                 <form method="post">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="confirm">
-                    <input type="hidden" name="payment_qr_id" value="{{ order.payment_qr_id }}">
+                    <input type="hidden" name="payment_token" value="{{ payment_token }}">
                     <button class="primary-button" type="submit">Konfirmasi Pembayaran</button>
                 </form>
-            {% elif order.payment_status == 'pending' %}
-                <p class="inline-notice">Upload bukti pembayaran agar tombol konfirmasi tersedia.</p>
-            {% else %}
-                <p class="inline-notice">Pesanan ini sudah diproses: {{ order.get_payment_status_display }}.</p>
             {% endif %}
         {% else %}
             <div class="empty-state compact-empty">
-                <h2>Belum ada QR yang dibaca</h2>
-                <p>Rincian pesanan akan muncul setelah file berhasil dikenali.</p>
+                <h2>Belum ada QR yang diverifikasi</h2>
+                <p>Rincian pembayaran muncul setelah SisaBayarQR berhasil dikenali.</p>
             </div>
         {% endif %}
     </section>
