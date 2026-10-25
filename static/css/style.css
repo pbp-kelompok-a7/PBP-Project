@@ -842,8 +842,9 @@ a {
 
 .badge-discount {
     left: 0.55rem;
-    background-color: #1E3A5F;
+    background-color: #ff2e2e;
     color: #ffffff;
+    box-shadow: 0 2px 6px rgba(255, 46, 46, 0.35);
 }
 
 .badge-stock {

@@ -1,27 +1,6 @@
-{% extends 'base.html' %}
 {% load static %}
 {% load l10n %}
-
-{% block title %}Marketplace Terdekat - SisaBijak{% endblock title %}
-
-{# base.html menyediakan block "meta" di <head>; Leaflet CSS wajib dimuat di sini #}
-{% block meta %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-{% endblock meta %}
-
-{% block content %}
 <main class="loc-page" id="maps">
-    
-    <style>
-    nav, header, .navbar, #navbar {
-        display: none !important;
-    }
-    
-    body {
-        padding-top: 0 !important;
-        margin-top: 0 !important;
-    }
-</style>
 
     <aside class="loc-map-panel">
         <div class="loc-location-pill">
@@ -242,7 +221,3 @@
 </main>
 
 {{ merchants_data|json_script:"merchants-data-json" }}
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="{% static 'js/merchant_loc.js' %}"></script>
-{% endblock content %}
