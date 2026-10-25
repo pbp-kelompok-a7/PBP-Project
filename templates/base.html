@@ -1,6 +1,7 @@
 {% load static %}
 {% url 'main:checkout' as checkout_url %}
 {% url 'catalog:catalog_list' as catalog_url %}
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -11,27 +12,60 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     {% block meta %}{% endblock meta %}
-    
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=4">
+
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5">
+
+    {% block extra_css %}{% endblock extra_css %}
 </head>
 
 <body class="{% block body_class %}{% endblock body_class %}">
     <header class="navbar">
-        <a href="{% url 'main:show_main' %}" class="brand">SisaBijak</a>
+        <a href="{% url 'main:show_main' %}" class="brand">
+            SisaBijak
+        </a>
 
-            <form class="search" role="search" method="get" action="{{ catalog_url }}">
-            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <form
+            class="search"
+            role="search"
+            method="get"
+            action="{{ catalog_url }}"
+        >
+            <svg
+                class="search-icon"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+            >
                 <circle cx="11" cy="11" r="7"/>
                 <path d="m20 20-3.5-3.5"/>
             </svg>
 
-            <input id="nav-search" type="search" name="q" value="{{ keyword|default:'' }}" placeholder="Cari makanan..." aria-label="Cari makanan">
+            <input
+                id="nav-search"
+                type="search"
+                name="q"
+                value="{{ keyword|default:'' }}"
+                placeholder="Cari makanan..."
+                aria-label="Cari makanan"
+            >
 
             <button type="button" class="location">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    aria-hidden="true"
+                >
                     <path d="M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11z"/>
                     <circle cx="12" cy="10" r="2.5"/>
                 </svg>
@@ -43,6 +77,7 @@
             <a href="{{ catalog_url|default:checkout_url }}">MarketPlace</a>
             <a href="{% url 'main:show_main' %}#impact">Impact</a>
             <a href="#">Contact</a>
+
             {% if not user.is_authenticated or user.profile.role == 'consumer' and not user.is_staff and not user.is_superuser %}
                 <a href="{% url 'main:checkout' %}">Keranjang</a>
             {% elif user.is_staff or user.is_superuser %}
@@ -51,16 +86,148 @@
         </nav>
 
         <div class="nav-actions">
+            <a href="{% url 'main:login' %}" class="btn btn-dark">
+                For Merchant
+            </a>
+{% load static %}
+{% url 'main:checkout' as checkout_url %}
+{% url 'catalog:catalog_list' as catalog_url %}
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>{% block title %}SisaBijak — Selamatkan Makanan, Lawan Perubahan Iklim{% endblock title %}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    {% block meta %}{% endblock meta %}
+
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5">
+
+    {% block extra_css %}{% endblock extra_css %}
+</head>
+
+<body class="{% block body_class %}{% endblock body_class %}">
+    <header class="navbar">
+        <a href="{% url 'main:show_main' %}" class="brand">
+            SisaBijak
+        </a>
+
+        <form
+            class="search"
+            role="search"
+            method="get"
+            action="{{ catalog_url }}"
+        >
+            <svg
+                class="search-icon"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+            >
+                <circle cx="11" cy="11" r="7"/>
+                <path d="m20 20-3.5-3.5"/>
+            </svg>
+
+            <input
+                id="nav-search"
+                type="search"
+                name="q"
+                value="{{ keyword|default:'' }}"
+                placeholder="Cari makanan..."
+                aria-label="Cari makanan"
+            >
+
+            <button type="button" class="location">
+                <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    aria-hidden="true"
+                >
+                    <path d="M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11z"/>
+                    <circle cx="12" cy="10" r="2.5"/>
+                </svg>
+                Depok
+            </button>
+        </form>
+
+        <nav class="nav-links" aria-label="Menu utama">
+            <a href="{{ catalog_url|default:checkout_url }}">MarketPlace</a>
+            <a href="{% url 'main:show_main' %}#impact">Impact</a>
+            <a href="#">Contact</a>
+
+            {% if not user.is_authenticated or user.profile.role == 'consumer' and not user.is_staff and not user.is_superuser %}
+                <a href="{% url 'main:checkout' %}">Keranjang</a>
+            {% elif user.is_staff or user.is_superuser %}
+                <a href="{% url 'main:simulator_bayar' %}">Simulator Bayar</a>
+            {% endif %}
+        </nav>
+
+        <div class="nav-actions">
+            <a href="{% url 'main:login' %}" class="btn btn-dark">
+                For Merchant
+            </a>
+
             {% if user.is_authenticated %}
                 {% if user.is_staff or user.is_superuser %}
-                    <a href="{% url 'admin:index' %}" class="btn btn-dark">Admin</a>
+                    <a href="{% url 'admin:index' %}" class="btn btn-dark">
+                        Admin
+                    </a>
                 {% elif user.profile.role == 'merchant' %}
-                    <a href="{% url 'main:product_view' %}" class="btn btn-dark">Dashboard</a>
+                    <a href="{% url 'main:product_view' %}" class="btn btn-dark">
+                        Dashboard
+                    </a>
                 {% else %}
-                    <a href="{% url 'main:consumer_dashboard' %}" class="btn btn-dark">Profile</a>
+                    <a href="{% url 'main:consumer_dashboard' %}" class="btn btn-dark">
+                        Profile
+                    </a>
                 {% endif %}
             {% else %}
-                <a href="{% url 'main:login' %}" class="btn btn-dark">Login</a>
+                <a href="{% url 'main:login' %}" class="btn btn-dark">
+                    Login
+                </a>
+            {% endif %}
+        </div>
+    </header>
+
+    <main class="site-content">
+        {% block content %}{% endblock content %}
+    </main>
+
+    {% block extra_js %}{% endblock extra_js %}
+</body>
+</html>
+            {% if user.is_authenticated %}
+                {% if user.is_staff or user.is_superuser %}
+                    <a href="{% url 'admin:index' %}" class="btn btn-dark">
+                        Admin
+                    </a>
+                {% elif user.profile.role == 'merchant' %}
+                    <a href="{% url 'main:product_view' %}" class="btn btn-dark">
+                        Dashboard
+                    </a>
+                {% else %}
+                    <a href="{% url 'main:consumer_dashboard' %}" class="btn btn-dark">
+                        Profile
+                    </a>
+                {% endif %}
+            {% else %}
+                <a href="{% url 'main:login' %}" class="btn btn-dark">
+                    Login
+                </a>
             {% endif %}
         </div>
     </header>

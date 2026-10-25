@@ -441,3 +441,62 @@ class UserRoleTests(TestCase):
         self.client.force_login(user)
         response = self.client.get(reverse("main:product_view"))
         self.assertEqual(response.status_code, 200)
+
+
+class ConsumerProfileTests(TestCase):
+    def setUp(self):
+        self.consumer = User.objects.create_user(
+            username="consumer_profile_test",
+            password="OldPassword123!",
+        )
+        self.client.force_login(self.consumer)
+
+    def test_consumer_can_open_edit_profile_page(self):
+        response = self.client.get(reverse("main:edit_profile"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "edit_profile_view.html")
+        self.assertIn("profile_form", response.context)
+        self.assertIn("password_form", response.context)
+
+    def test_merchant_cannot_open_consumer_edit_profile_page(self):
+        merchant = User.objects.create_user(
+            username="merchant_profile_test",
+            password="OldPassword123!",
+        )
+        merchant.profile.role = UserProfile.Role.MERCHANT
+        merchant.profile.save()
+
+        self.client.force_login(merchant)
+        response = self.client.get(reverse("main:edit_profile"))
+
+        self.assertRedirects(response, reverse("main:show_main"))
+
+
+class ConsumerPasswordChangeTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="password_change_test",
+            password="OldPassword123!",
+        )
+        self.client.force_login(self.user)
+
+    def test_consumer_can_change_password(self):
+        response = self.client.post(
+            reverse("main:edit_profile"),
+            {
+                "action": "password",
+                "old_password": "OldPassword123!",
+                "new_password1": "NewPassword456!Secure",
+                "new_password2": "NewPassword456!Secure",
+            },
+        )
+
+        self.user.refresh_from_db()
+        self.assertTrue(
+            self.user.check_password("NewPassword456!Secure")
+        )
+        self.assertFalse(
+            self.user.check_password("OldPassword123!")
+        )
+
