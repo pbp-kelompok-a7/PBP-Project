@@ -6530,4 +6530,26 @@ button {
         font-size: 12px;
     }
 }
+
+}
+.consumer-dashboard-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.consumer-dashboard-actions form {
+    margin: 0;
+}
+
+.consumer-dashboard-actions button {
+    cursor: pointer;
+    font: inherit;
+}
+
+@media (max-width: 700px) {
+    .consumer-dashboard-actions {
+        width: 100%;
+    }
 }

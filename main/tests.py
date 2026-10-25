@@ -248,7 +248,7 @@ class OrderSystemFlowTests(TestCase):
         response = self.client.get(reverse("main:checkout"))
         self.assertContains(response, "Keranjang masih kosong")
         self.assertTemplateUsed(response, "base.html")
-        self.assertContains(response, reverse("main:consumer_dashboard"))
+        self.assertContains(response, reverse("main:profile"))
         self.assertRegex(response.content.decode(), r'Contact</a>\s*<a href="/orders/checkout/">Keranjang</a>')
         self.assertNotContains(response, "product-switcher")
 
