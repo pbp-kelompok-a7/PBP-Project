@@ -88,48 +88,34 @@
 
   document.querySelectorAll(".qr-canvas").forEach(drawQr);
 
-  const profileTrigger = document.querySelector(".profile-trigger");
-  const profileDropdown = document.getElementById("profile-dropdown");
-  if (profileTrigger && profileDropdown) {
-    profileTrigger.addEventListener("click", () => {
-      const open = profileDropdown.hidden;
-      profileDropdown.hidden = !open;
-      profileTrigger.setAttribute("aria-expanded", String(open));
-    });
-    document.addEventListener("click", (event) => {
-      if (!event.target.closest(".profile-menu")) {
-        profileDropdown.hidden = true;
-        profileTrigger.setAttribute("aria-expanded", "false");
-      }
-    });
-  }
-
-  const productCard = document.querySelector(".product-card[data-unit-price]");
-  const quantityOutput = document.getElementById("quantity-value");
-  const quantityInput = document.getElementById("quantity-input");
-  if (productCard && quantityOutput && quantityInput) {
-    const unitPrice = Number(productCard.dataset.unitPrice);
-    const originalPrice = Number(productCard.dataset.originalPrice);
-    const maxQuantity = Math.min(10, Number(productCard.dataset.maxStock));
-    let quantity = 1;
-
-    function updateQuantity(next) {
-      quantity = Math.max(1, Math.min(maxQuantity, next));
-      quantityOutput.value = String(quantity);
-      quantityOutput.textContent = String(quantity);
-      quantityInput.value = String(quantity);
-      document.getElementById("summary-subtotal").textContent = rupiah(unitPrice * quantity);
-      document.getElementById("summary-total").textContent = rupiah(unitPrice * quantity);
-      document.getElementById("summary-savings").textContent = rupiah((originalPrice - unitPrice) * quantity);
-      document.getElementById("summary-original").textContent = rupiah(originalPrice * quantity);
+  const cartForm = document.querySelector("[data-cart-form]");
+  if (cartForm) {
+    const items = [...cartForm.querySelectorAll("[data-cart-item]")];
+    function updateTotals() {
+      let total = 0;
+      let original = 0;
+      items.forEach((item) => {
+        const quantity = Number(item.querySelector(".cart-quantity").value) || 0;
+        total += Number(item.dataset.unitPrice) * quantity;
+        original += Number(item.dataset.originalPrice) * quantity;
+      });
+      document.getElementById("summary-subtotal").textContent = rupiah(total);
+      document.getElementById("summary-total").textContent = rupiah(total);
+      document.getElementById("summary-savings").textContent = rupiah(original - total);
+      document.getElementById("summary-original").textContent = rupiah(original);
     }
-
-    document.querySelectorAll("[data-quantity]").forEach((button) => {
-      button.addEventListener("click", () => {
-        updateQuantity(quantity + (button.dataset.quantity === "plus" ? 1 : -1));
+    items.forEach((item) => {
+      const input = item.querySelector(".cart-quantity");
+      input.addEventListener("input", updateTotals);
+      item.querySelectorAll("[data-quantity]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const step = button.dataset.quantity === "plus" ? 1 : -1;
+          input.value = Math.max(1, Math.min(10, (Number(input.value) || 1) + step));
+          updateTotals();
+        });
       });
     });
-    updateQuantity(1);
+    updateTotals();
   }
 
   const timer = document.querySelector("[data-payment-deadline]");
@@ -162,6 +148,7 @@
         const label = document.getElementById("payment-status-label");
         if (label) label.textContent = result.status_label;
         if (result.redirect_url) window.location.href = result.redirect_url;
+        else if (result.status === "expired") window.location.reload();
       } catch (_error) {
         // Polling will try again; a temporary network error should not break the page.
       }
@@ -172,7 +159,7 @@
   document.querySelectorAll("[data-download-qr]").forEach((button) => {
     button.addEventListener("click", () => {
       const link = document.createElement("a");
-      link.download = `${button.dataset.downloadQr}.jpeg`;
+      link.download = `${button.dataset.downloadQr}.png`;
       link.href = button.dataset.qrSource;
       link.click();
       showToast("SisaBayarQR berhasil diunduh.");

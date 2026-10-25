@@ -18,11 +18,6 @@
             <strong>{% if user.is_superuser %}Admin{% else %}{{ user.profile.get_role_display }}{% endif %}</strong>
         </div>
 
-        {% if not user.is_superuser and user.profile.role == "consumer" %}
-            <a href="{% url 'main:consumer_dashboard' %}" class="btn btn-dark">
-                Dashboard Consumer
-            </a>
-        {% endif %}
         <form method="POST" action="{% url 'main:logout' %}">
             {% csrf_token %}
             <button type="submit" class="btn btn-dark profile-logout">
