@@ -157,7 +157,7 @@ class CatalogTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "catalog/catalog_detail.html")
         self.assertContains(response, "Bread Surprise Box")
-        self.assertContains(response, "Claim Mystery Box")
+        self.assertContains(response, "Add to Cart")
         self.assertContains(response, "Jl. Margonda Raya No. 12, Depok")
 
     def test_detail_tombol_klaim_ke_checkout(self):
@@ -172,12 +172,12 @@ class CatalogTest(TestCase):
         self.bread.save()
         response = self.client.get(reverse("catalog:catalog_detail", args=[self.bread.product_id]))
         self.assertContains(response, "Pickup Closed")
-        self.assertNotContains(response, "Claim Mystery Box")
+        self.assertNotContains(response, "Add to Cart")
 
     def test_detail_produk_stok_habis_sold_out(self):
         response = self.client.get(reverse("catalog:catalog_detail", args=[self.habis.product_id]))
         self.assertContains(response, "Sold Out")
-        self.assertNotContains(response, "Claim Mystery Box")
+        self.assertNotContains(response, "Add to Cart")
 
     def test_detail_produk_inactive_sold_out(self):
         response = self.client.get(reverse("catalog:catalog_detail", args=[self.inactive.product_id]))
