@@ -77,7 +77,7 @@
                             </p>
 
                             {% if p.stock > 0 %}
-                                <a class="deal-btn" href="#">Lihat Detail</a>
+                                <a class="deal-btn" href="{% url 'catalog:catalog_detail' p.product_id %}">Lihat Detail</a>
                             {% else %}
                                 <span class="deal-btn is-disabled" aria-disabled="true">Habis</span>
                             {% endif %}
@@ -96,7 +96,7 @@
                             <div class="deal-price"><strong>Rp15.000</strong><s>Rp30.000</s></div>
                             <p class="deal-pickup">🕒 Ambil 22 Okt, 18:00</p>
                             <p class="deal-rating">★ 4.8 · 32 ulasan</p>
-                            <a class="deal-btn" href="#">Lihat Detail</a>
+                            <a class="deal-btn" href="{% url 'catalog:catalog_detail' 'PRD-B037157192DA' %}">Lihat Detail</a>
                         </div>
                     </article>
 
@@ -112,7 +112,7 @@
                             <div class="deal-price"><strong>Rp10.000</strong><s>Rp20.000</s></div>
                             <p class="deal-pickup">🕒 Ambil 22 Okt, 19:30</p>
                             <p class="deal-rating">★ 4.6 · 14 ulasan</p>
-                            <a class="deal-btn" href="#">Lihat Detail</a>
+                            <a class="deal-btn" href="{% url 'catalog:catalog_detail' 'PRD-B037157192DA' %}">Lihat Detail</a>
                         </div>
                     </article>
 
@@ -132,6 +132,11 @@
                         </div>
                     </article>
                 {% endfor %}
+                <div style="display: flex; align-items: center; justify-content: center; padding: 0 .05rem; flex-shrink: 0;">
+                    <a class="deal-btn" href="/catalog/" style="margin:0; width: auto;white-space: nowrap; padding: 0.76rem;">
+                        View More &rarr;
+                    </a>
+                </div>
             </div>
         </section>
 
