@@ -4,16 +4,16 @@
 {% block order_content %}
 <section class="page-heading">
     <h1>Simulator Pembayaran</h1>
-    <p>Khusus admin. Unggah SisaBayarQR untuk memeriksa dan mengonfirmasi pembayaran.</p>
+    <p>Khusus admin. Unggah file PNG SisaBayarQR asli hasil unduhan untuk memeriksa dan mengonfirmasi pembayaran.</p>
 </section>
 <div class="simulator-layout">
     <form method="post" enctype="multipart/form-data" class="panel simulator-upload-card">
         {% csrf_token %}
         <input type="hidden" name="action" value="scan">
         <label class="file-drop" for="payment-proof">
-            <input id="payment-proof" name="payment_proof" type="file" accept="image/png,image/jpeg,image/webp" required>
-            <strong>Pilih gambar SisaBayarQR</strong>
-            <span>PNG, JPG, atau WebP - maksimal 5 MB</span>
+            <input id="payment-proof" name="payment_proof" type="file" accept=".png,image/png" required>
+            <strong>Pilih PNG SisaBayarQR hasil unduhan</strong>
+            <span>File PNG asli dari halaman pembayaran, maksimal 5 MB. Screenshot atau foto tidak didukung.</span>
         </label>
         <span class="file-name" id="payment-file-name">Belum ada file dipilih</span>
         <button class="primary-button" id="scan-payment" type="submit">Periksa SisaBayarQR</button>
