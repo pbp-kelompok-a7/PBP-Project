@@ -52,7 +52,24 @@ PAYMENT_QR_PREFIX = "SISABIJAK-PAY:"
 
 @never_cache
 def show_main(request):
-    return render(request, "index.html")
+
+    merchants_qs = MerchantLocationIntegrator.objects.all()
+    merchants_data = [
+        {
+            "id_merchant": str(m.id_merchant),
+            "name_merchant": m.name_merchant,
+            "address": m.address,
+            "latitude": float(m.latitude),
+            "longitude": float(m.longitude),
+        }
+        for m in merchants_qs
+    ]
+
+    context = {
+        "nearby": merchants_qs,
+        "merchants_data": merchants_data,
+    }
+    return render(request, "index.html", context)
 
 
 def register(request):

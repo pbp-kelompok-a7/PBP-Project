@@ -7,10 +7,9 @@ document.addEventListener('DOMContentLoaded', function () {
     let userMarker = null;
 
     const map = L.map('merchant-map').setView([userLat, userLng], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        referrerPolicy: 'origin',
-        attribution: '&copy; OpenStreetMap contributors'
+    L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        attribution: '&copy; Google Maps'
     }).addTo(map);
 
     function esc(text) {
@@ -44,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (merchants.length === 0) {
         const seen = new Set();
-        document.querySelectorAll('.deal-card[data-merchant]').forEach(card => {
+        document.querySelectorAll('section[aria-labelledby="nearby-title"] .deal-card[data-merchant]').forEach(card => {
             const id = card.dataset.merchant;
             const lat = parseFloat((card.dataset.lat || '').replace(',', '.'));
             const lng = parseFloat((card.dataset.lng || '').replace(',', '.'));

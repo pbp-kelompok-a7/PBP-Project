@@ -87,32 +87,32 @@
                     <article class="deal-card" data-merchant="m1" data-name="Roti Kita Bakery" data-address="Jl. Margonda Raya No. 12" data-lat="-6.3705" data-lng="106.8340">
                         <div class="deal-media">
                             <span class="deal-placeholder">Foto paket</span>
-                            <span class="badge badge-discount">-50%</span>
+                            <span class="badge badge-discount">-58%</span>
                             <span class="badge badge-stock">Sisa 8</span>
                         </div>
                         <div class="deal-body">
                             <div class="deal-meta"><span>Roti Kita Bakery</span><span class="js-distance">0.8 km</span></div>
-                            <h3>Roti Pilihan</h3>
-                            <div class="deal-price"><strong>Rp15.000</strong><s>Rp30.000</s></div>
+                            <h3>Sourdough Loaf Box</h3>
+                            <div class="deal-price"><strong>Rp25.200</strong><s>Rp60.000</s></div>
                             <p class="deal-pickup">🕒 Ambil 22 Okt, 18:00</p>
                             <p class="deal-rating">★ 4.8 · 32 ulasan</p>
-                            <a class="deal-btn" href="{% url 'catalog:catalog_detail' 'PRD-B037157192DA' %}">Lihat Detail</a>
+                            <a class="deal-btn" href="{% url 'catalog:catalog_detail' 'PRD-69F07B8DCFA7' %}">Lihat Detail</a>
                         </div>
                     </article>
 
-                    <article class="deal-card" data-merchant="m2" data-name="Jus Sehat" data-address="Jl. Kemakmuran No. 5" data-lat="-6.3600" data-lng="106.8200">
+                    <article class="deal-card" data-merchant="m2" data-name="Nori Corner" data-address="Jl. Kemakmuran No. 5" data-lat="-6.3600" data-lng="106.8200">
                         <div class="deal-media">
                             <span class="deal-placeholder">Foto paket</span>
-                            <span class="badge badge-discount">-50%</span>
+                            <span class="badge badge-discount">-60%</span>
                             <span class="badge badge-stock is-low">Sisa 2</span>
                         </div>
                         <div class="deal-body">
-                            <div class="deal-meta"><span>Jus Sehat</span><span class="js-distance">1.2 km</span></div>
+                            <div class="deal-meta"><span>Nori Corner</span><span class="js-distance">1.2 km</span></div>
                             <h3>5 Jus Pilihan</h3>
-                            <div class="deal-price"><strong>Rp10.000</strong><s>Rp20.000</s></div>
+                            <div class="deal-price"><strong>Rp34.000</strong><s>Rp85.000</s></div>
                             <p class="deal-pickup">🕒 Ambil 22 Okt, 19:30</p>
                             <p class="deal-rating">★ 4.6 · 14 ulasan</p>
-                            <a class="deal-btn" href="{% url 'catalog:catalog_detail' 'PRD-B037157192DA' %}">Lihat Detail</a>
+                            <a class="deal-btn" href="{% url 'catalog:catalog_detail' 'PRD-84E8CED6D211' %}">Lihat Detail</a>
                         </div>
                     </article>
 
@@ -176,44 +176,72 @@
                         </article>
                     {% empty %}
                         {# Data contoh dari preview.html bila database merchant masih kosong #}
-                        <article class="deal-card" data-merchant="m1" data-name="Roti Kita Bakery" data-address="Jl. Margonda Raya No. 12" data-lat="-6.3705" data-lng="106.8340">
+                        <article class="deal-card" data-merchant="r1" data-name="Kopi Senja Cafe" data-address="Jl. Beji Timur No. 3, Depok" data-lat="-6.3775" data-lng="106.8215">
                             <div class="deal-media">
                                 <span class="deal-placeholder">Foto restoran</span>
                                 <span class="badge badge-stock">3 paket tersedia</span>
                             </div>
                             <div class="deal-body">
-                                <div class="deal-meta"><span>Jl. Margonda Raya No. 12</span><span class="js-distance">0.8 km</span></div>
-                                <h3>Roti Kita Bakery</h3>
+                                <div class="deal-meta"><span>Jl. Beji Timur No. 3, Depok</span><span class="js-distance">0.8 km</span></div>
+                                <h3>Kopi Senja Cafe</h3>
                                 <a class="deal-btn"
-                                   href="https://www.google.com/maps/dir/?api=1&destination=-6.3705,106.8340"
+                                   href="https://www.google.com/maps/dir/?api=1&destination=-6.3775,106.8215"
                                    target="_blank" rel="noopener noreferrer">Petunjuk Jalan</a>
                             </div>
                         </article>
 
-                        <article class="deal-card" data-merchant="m2" data-name="Jus Sehat" data-address="Jl. Kemakmuran No. 5" data-lat="-6.3600" data-lng="106.8200">
+                        <article class="deal-card" data-merchant="r2" data-name="Sweet Crumbs" data-address="Jl. Haji Asmawi No. 8, Depok" data-lat="-6.3772" data-lng="106.8148">
                             <div class="deal-media">
                                 <span class="deal-placeholder">Foto restoran</span>
                                 <span class="badge badge-stock">1 paket tersedia</span>
                             </div>
                             <div class="deal-body">
-                                <div class="deal-meta"><span>Jl. Kemakmuran No. 5</span><span class="js-distance">1.2 km</span></div>
-                                <h3>Jus Sehat</h3>
+                                <div class="deal-meta"><span>Jl. Haji Asmawi No. 8, Depok</span><span class="js-distance">1.2 km</span></div>
+                                <h3>Sweet Crumbs</h3>
                                 <a class="deal-btn"
-                                   href="https://www.google.com/maps/dir/?api=1&destination=-6.3600,106.8200"
+                                   href="https://www.google.com/maps/dir/?api=1&destination=-6.3722,106.8148"
                                    target="_blank" rel="noopener noreferrer">Petunjuk Jalan</a>
                             </div>
                         </article>
 
-                        <article class="deal-card" data-merchant="m3" data-name="Warung Bu Tini" data-address="Jl. Dewi Sartika No. 30" data-lat="-6.3890" data-lng="106.8150">
+                        <article class="deal-card" data-merchant="r3" data-name="Dapur Hijau" data-address="Jl. Sawo No. 21, Depok" data-lat="-6.3642" data-lng="106.8325">
                             <div class="deal-media">
                                 <span class="deal-placeholder">Foto restoran</span>
                                 <span class="badge badge-stock is-out">Belum ada paket</span>
                             </div>
                             <div class="deal-body">
-                                <div class="deal-meta"><span>Jl. Dewi Sartika No. 30</span><span class="js-distance">2.4 km</span></div>
-                                <h3>Warung Bu Tini</h3>
+                                <div class="deal-meta"><span>Jl. Sawo No. 21, Depok</span><span class="js-distance">2.4 km</span></div>
+                                <h3>Dapur Hijau</h3>
                                 <a class="deal-btn"
-                                   href="https://www.google.com/maps/dir/?api=1&destination=-6.3890,106.8150"
+                                   href="https://www.google.com/maps/dir/?api=1&destination=-6.3642,106.8325"
+                                   target="_blank" rel="noopener noreferrer">Petunjuk Jalan</a>
+                            </div>
+                        </article>
+
+                        <article class="deal-card" data-merchant="r4" data-name="Bakeri Margonda" data-address="Jl. Margonda Raya No. 99, Depok" data-lat="-6.3820" data-lng="106.8302">
+                            <div class="deal-media">
+                                <span class="deal-placeholder">Foto restoran</span>
+                                <span class="badge badge-stock">2 paket tersedia</span>
+                            </div>
+                            <div class="deal-body">
+                                <div class="deal-meta"><span>Jl. Margonda Raya No. 99, Depok</span><span class="js-distance">2.4 km</span></div>
+                                <h3>Bakeri Margonda</h3>
+                                <a class="deal-btn"
+                                   href="https://www.google.com/maps/dir/?api=1&destination=-6.3820,106.8302"
+                                   target="_blank" rel="noopener noreferrer">Petunjuk Jalan</a>
+                            </div>
+                        </article>
+
+                        <article class="deal-card" data-merchant="r5" data-name="Warung Rasa" data-address="Jl. Beji Timur No. 3, Depok" data-lat="-6.3688" data-lng="106.8180">
+                            <div class="deal-media">
+                                <span class="deal-placeholder">Foto restoran</span>
+                                <span class="badge badge-stock">5 paket tersedia</span>
+                            </div>
+                            <div class="deal-body">
+                                <div class="deal-meta"><span>Jl. Beji Timur No. 3, Depok</span><span class="js-distance">2.4 km</span></div>
+                                <h3>Warung Rasa</h3>
+                                <a class="deal-btn"
+                                   href="https://www.google.com/maps/dir/?api=1&destination=-6.3688,106.8180"
                                    target="_blank" rel="noopener noreferrer">Petunjuk Jalan</a>
                             </div>
                         </article>
