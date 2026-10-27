@@ -55,7 +55,6 @@ PAYMENT_PNG_MARKER = b"SisaBijakPayment\x00"
 
 @never_cache
 def show_main(request):
-
     merchants_qs = MerchantLocationIntegrator.objects.all()
     merchants_data = [
         {
@@ -66,10 +65,36 @@ def show_main(request):
             "longitude": float(m.longitude),
         }
         for m in merchants_qs
+        if m.latitude is not None and m.longitude is not None
     ]
 
+    nearby_list = list(merchants_qs)
+
+    if not nearby_list:
+        nearby_dict = {}
+        for p in MerchantProduct.objects.select_related("merchant").all():
+            m_name = getattr(p, "merchant_name", None) or p.merchant.username
+            addr = getattr(p, "address", "")
+            key = f"{m_name}_{addr}"
+
+            entry = nearby_dict.setdefault(
+                key,
+                {
+                    "id_merchant": f"m-{len(nearby_dict) + 1}",
+                    "name_merchant": m_name,
+                    "address": addr,
+                    "active_packages": 0,
+                },
+            )
+
+            stock = getattr(p, "product_stock", 0) or 0
+            if stock > 0:
+                entry["active_packages"] += 1
+
+        nearby_list = list(nearby_dict.values())
+
     context = {
-        "nearby": merchants_qs,
+        "nearby": nearby_list,
         "merchants_data": merchants_data,
     }
     return render(request, "index.html", context)

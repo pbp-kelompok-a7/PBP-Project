@@ -141,7 +141,7 @@
         </section>
 
         <section aria-labelledby="nearby-title">
-            <h2 class="loc-heading" id="nearby-title">Restoran Terdekat</h2>
+            <h2 class="loc-heading" id="nearby-title">Restoran</h2>
             <div class="loc-row">
                 {% with merchant_list=nearby %}
                     {% for m in merchant_list %}
@@ -170,7 +170,7 @@
                                 </div>
                                 <h3>{{ m.name_merchant }}</h3>
                                 <a class="deal-btn"
-                                   href="https://www.google.com/maps/dir/?api=1&destination={{ m.latitude|unlocalize }},{{ m.longitude|unlocalize }}"
+                                   href="https://www.google.com/maps/dir/?api=1&destination={{ m.address|urlencode }}"
                                    target="_blank" rel="noopener noreferrer">Petunjuk Jalan</a>
                             </div>
                         </article>
