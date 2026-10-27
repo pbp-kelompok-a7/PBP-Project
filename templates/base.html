@@ -91,6 +91,9 @@
                     <a href="{% url 'admin:index' %}" class="btn btn-dark">
                         Admin
                     </a>
+                    <a href="{% url 'main:logout' %}" class="btn btn-dark">
+                        Logout
+                    </a>
                 {% elif user.profile.role == 'merchant' %}
                     <a href="{% url 'main:product_view' %}" class="btn btn-dark">
                         Dashboard
