@@ -87,7 +87,7 @@ class CatalogTest(TestCase):
     def test_katalog_nampilin_harga_dan_nama_toko(self):
         response = self.client.get(reverse("catalog:catalog_list"))
         self.assertContains(response, "Rp15.000")
-        self.assertContains(response, "Rp40.000")
+        self.assertContains(response, "Rp40.000") 
         self.assertContains(response, "Roti Kita Bakery")
 
     def test_katalog_diurutin_dari_diskon_terbesar(self):

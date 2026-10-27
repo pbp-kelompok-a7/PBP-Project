@@ -62,6 +62,7 @@ def ambil_produk_tersedia():
         MerchantProduct.objects.filter(
             product_status=MerchantProduct.ProductStatus.AVAILABLE,
             product_stock__gt=0,
+            #end_pickup__gt=timezone.now() + timedelta(minutes=15),
         )
         .select_related("merchant")
         .order_by("-discount_rate", "product_name")
