@@ -608,6 +608,36 @@ a {
 
 /* Merchant Location Integrator */
 
+/* Diskon Hari Ini */
+.loc-stack .loc-row--deals {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+@media (max-width: 900px) {
+    .loc-stack .loc-row--deals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 520px) {
+    .loc-stack .loc-row--deals { grid-template-columns: 1fr; }
+}
+
+.loc-stack .deal-card--empty {
+    border-style: dashed;
+    background: #f9fafb;
+    opacity: 0.75;
+    cursor: default;
+}
+.loc-stack .deal-card--empty .deal-media { background: #f3f4f6; }
+
+.loc-stack .loc-more {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.25rem;
+}
+.loc-stack .loc-more .deal-btn {
+    width: auto;
+    margin: 0;
+    padding: 0.7rem 1.5rem;
+}
+
 /* =========================================================
    MARKETPLACE TERDEKAT (merchant_loc, preview, product_card)
    ========================================================= */
