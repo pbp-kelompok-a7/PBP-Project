@@ -1,6 +1,6 @@
 {% load static %}
 {% load l10n %}
-<main class="loc-page" id="maps">
+<main class="loc-page loc-stack" id="maps">
 
     <aside class="loc-map-panel">
         <div class="loc-location-pill">
@@ -18,125 +18,50 @@
 
         <section aria-labelledby="deals-title">
             <h2 class="loc-heading" id="deals-title">Diskon Hari Ini</h2>
-            <div class="loc-row">
+            <div class="loc-row loc-row--deals">
                 {% for p in deals %}
-                    <article class="deal-card {% if p.stock <= 0 %}is-soldout{% endif %}"
-                             data-merchant="{{ p.merchant_id }}">
-
+                    <article class="deal-card">
                         <div class="deal-media">
-                            {% if p.image %}
-                                <img src="{{ p.image.url }}" alt="{{ p.name }}" loading="lazy">
-                            {% else %}
-                                <span class="deal-placeholder">Foto paket</span>
-                            {% endif %}
-
-                            {# Badge persen diskon #}
+                            <span class="deal-placeholder">Foto paket</span>
                             {% if p.discount_rate %}
-                                <span class="badge badge-discount">-{{ p.discount_rate }}%</span>
+                                <span class="badge badge-discount">-{{ p.discount_rate|floatformat:"0" }}%</span>
                             {% endif %}
-
-                            {# Badge stok: habis / menipis / normal #}
-                            {% if p.stock <= 0 %}
-                                <span class="badge badge-stock is-out">Habis</span>
-                            {% elif p.stock <= 3 %}
-                                <span class="badge badge-stock is-low">Sisa {{ p.stock }}</span>
+                            {% if p.product_stock <= 3 %}
+                                <span class="badge badge-stock is-low">Sisa {{ p.product_stock }}</span>
                             {% else %}
-                                <span class="badge badge-stock">Sisa {{ p.stock }}</span>
+                                <span class="badge badge-stock">Sisa {{ p.product_stock }}</span>
                             {% endif %}
                         </div>
-
                         <div class="deal-body">
-                            <div class="deal-meta">
-                                <span>{{ p.merchant_name }}</span>
-                                {% if p.distance_km is not None %}
-                                    <span class="js-distance">{{ p.distance_km|floatformat:1 }} km</span>
-                                {% else %}
-                                    <span class="js-distance">-- km</span>
-                                {% endif %}
-                            </div>
-
-                            <h3>{{ p.name }}</h3>
-
+                            <div class="deal-meta"><span>{{ p.merchant_name }}</span></div>
+                            <h3>{{ p.product_name }}</h3>
                             <div class="deal-price">
-                                <strong>Rp{{ p.final_price|floatformat:"0g" }}</strong>
-                                {% if p.discount_rate %}
-                                    <s>Rp{{ p.price|floatformat:"0g" }}</s>
-                                {% endif %}
+                                <strong>Rp{{ p.discount_price|floatformat:"0g" }}</strong>
+                                {% if p.discount_rate %}<s>Rp{{ p.real_price|floatformat:"0g" }}</s>{% endif %}
                             </div>
-
-                            {# Jam pengambilan #}
-                            <p class="deal-pickup">🕒 Ambil {{ p.pickup|date:"j M, H:i" }}</p>
-
-                            {# Rating: tampilkan teks alternatif bila belum ada ulasan #}
-                            <p class="deal-rating">
-                                {% if p.review_count %}
-                                    ★ {{ p.rating|floatformat:1 }} · {{ p.review_count }} ulasan
-                                {% else %}
-                                    Belum ada ulasan
-                                {% endif %}
-                            </p>
-
-                            {% if p.stock > 0 %}
-                                <a class="deal-btn" href="{% url 'catalog:catalog_detail' p.product_id %}">Lihat Detail</a>
-                            {% else %}
-                                <span class="deal-btn is-disabled" aria-disabled="true">Habis</span>
-                            {% endif %}
+                            <p class="deal-pickup">🕒 Ambil {{ p.start_pickup|date:"j M, H:i" }} – {{ p.end_pickup|date:"H:i" }}</p>
+                            <p class="deal-rating">Belum ada ulasan</p>
+                            <a class="deal-btn" href="{% url 'catalog:catalog_detail' p.product_id %}">Lihat Detail</a>
                         </div>
                     </article>
                 {% empty %}
-                    <article class="deal-card" data-merchant="m1" data-name="Roti Kita Bakery" data-address="Jl. Margonda Raya No. 12" data-lat="-6.3705" data-lng="106.8340">
+                    <p style="margin:0; color:#6b7280;">Belum ada paket diskon hari ini.</p>
+                {% endfor %}
+                {% for i in deal_placeholders %}
+                    <article class="deal-card deal-card--empty" aria-hidden="true">
                         <div class="deal-media">
-                            <span class="deal-placeholder">Foto paket</span>
-                            <span class="badge badge-discount">-58%</span>
-                            <span class="badge badge-stock">Sisa 8</span>
+                            <span class="deal-placeholder">Segera hadir</span>
                         </div>
                         <div class="deal-body">
-                            <div class="deal-meta"><span>Roti Kita Bakery</span><span class="js-distance">0.8 km</span></div>
-                            <h3>Sourdough Loaf Box</h3>
-                            <div class="deal-price"><strong>Rp25.200</strong><s>Rp60.000</s></div>
-                            <p class="deal-pickup">🕒 Ambil 22 Okt, 18:00</p>
-                            <p class="deal-rating">★ 4.8 · 32 ulasan</p>
-                            <a class="deal-btn" href="{% url 'catalog:catalog_detail' 'PRD-69F07B8DCFA7' %}">Lihat Detail</a>
-                        </div>
-                    </article>
-
-                    <article class="deal-card" data-merchant="m2" data-name="Nori Corner" data-address="Jl. Kemakmuran No. 5" data-lat="-6.3600" data-lng="106.8200">
-                        <div class="deal-media">
-                            <span class="deal-placeholder">Foto paket</span>
-                            <span class="badge badge-discount">-60%</span>
-                            <span class="badge badge-stock is-low">Sisa 2</span>
-                        </div>
-                        <div class="deal-body">
-                            <div class="deal-meta"><span>Nori Corner</span><span class="js-distance">1.2 km</span></div>
-                            <h3>5 Jus Pilihan</h3>
-                            <div class="deal-price"><strong>Rp34.000</strong><s>Rp85.000</s></div>
-                            <p class="deal-pickup">🕒 Ambil 22 Okt, 19:30</p>
-                            <p class="deal-rating">★ 4.6 · 14 ulasan</p>
-                            <a class="deal-btn" href="{% url 'catalog:catalog_detail' 'PRD-84E8CED6D211' %}">Lihat Detail</a>
-                        </div>
-                    </article>
-
-                    <article class="deal-card is-soldout" data-merchant="m3" data-name="Warung Bu Tini" data-address="Jl. Dewi Sartika No. 30" data-lat="-6.3890" data-lng="106.8150">
-                        <div class="deal-media">
-                            <span class="deal-placeholder">Foto paket</span>
-                            <span class="badge badge-discount">-30%</span>
-                            <span class="badge badge-stock is-out">Habis</span>
-                        </div>
-                        <div class="deal-body">
-                            <div class="deal-meta"><span>Warung Bu Tini</span><span class="js-distance">2.4 km</span></div>
-                            <h3>Nasi Box Mix</h3>
-                            <div class="deal-price"><strong>Rp17.500</strong><s>Rp25.000</s></div>
-                            <p class="deal-pickup">🕒 Ambil 22 Okt, 20:00</p>
-                            <p class="deal-rating">Belum ada ulasan</p>
-                            <span class="deal-btn is-disabled" aria-disabled="true">Habis</span>
+                            <h3>Belum ada paket</h3>
+                            <p class="deal-rating">Paket baru dari merchant akan muncul di sini.</p>
                         </div>
                     </article>
                 {% endfor %}
-                <div style="display: flex; align-items: center; justify-content: center; padding: 0 .05rem; flex-shrink: 0;">
-                    <a class="deal-btn" href="/catalog/" style="margin:0; width: auto;white-space: nowrap; padding: 0.76rem;">
-                        View More &rarr;
-                    </a>
-                </div>
+            </div>
+
+            <div class="loc-more">
+                <a class="deal-btn" href="/catalog/">View More &rarr;</a>
             </div>
         </section>
 
@@ -251,6 +176,6 @@
         </section>
 
     </div>
-</main>
+</section>  
 
 {{ merchants_data|json_script:"merchants-data-json" }}

@@ -26,7 +26,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
-from django.db.models import Q
+from django.db.models import Q, ProtectedError
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from django.views.decorators.http import (
@@ -93,7 +93,20 @@ def show_main(request):
 
         nearby_list = list(nearby_dict.values())
 
+    deals = (
+        MerchantProduct.objects
+        .filter(
+            product_status=MerchantProduct.Status.AVAILABLE,
+            product_stock__gt=0,
+            end_pickup__gt=timezone.now(),
+        )
+        .select_related("merchant")
+        .order_by("-discount_rate", "start_pickup")[:4]
+    )
+
     context = {
+        "deals": deals,
+        "deal_placeholders": range(4 - len(deals)),
         "nearby": nearby_list,
         "merchants_data": merchants_data,
     }
@@ -810,9 +823,13 @@ def product_update(request, product_id):
 @product_merchant_required
 def product_delete(request, product_id):
     product = get_object_or_404(MerchantProduct, product_id=product_id, merchant=request.user)
-    if request.method == "POST":
+    try:
         product.delete()
         messages.success(request, "Produk berhasil dihapus.")
+    except ProtectedError:
+            product.product_status = MerchantProduct.Status.INACTIVE
+            product.save(update_fields=["product_status"])
+            messages.info(request, "Produk sudah punya pesanan, jadi dinonaktifkan (tidak dihapus).")
     return redirect("main:product_view")
 
 
