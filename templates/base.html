@@ -75,7 +75,6 @@
 
         <nav class="nav-links" aria-label="Menu utama">
             <a href="{{ catalog_url|default:checkout_url }}">MarketPlace</a>
-            <a href="{% url 'main:show_main' %}#impact">Impact</a>
             <a href="#">Contact</a>
 
             {% if not user.is_authenticated or user.profile.role == 'consumer' and not user.is_staff and not user.is_superuser %}
