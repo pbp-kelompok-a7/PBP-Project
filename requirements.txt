@@ -3,5 +3,4 @@ gunicorn
 psycopg2-binary
 python-dotenv
 whitenoise
-qrcode[pil]>=8.2,<9
-zxing-cpp>=2.3,<4
+qrcode[png]>=8.2,<9

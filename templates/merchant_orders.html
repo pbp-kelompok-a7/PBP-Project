@@ -46,11 +46,11 @@
             </dl>
             <div class="validation-area">
                 <h3>Validasi QR Klaim</h3>
-                {% if selected_order.payment_status == 'paid' %}
-                    <a class="scanner" href="{% url 'main:validate_claim' %}?code={{ selected_order.claim_qr_code }}">
-                        <canvas class="qr-canvas" width="88" height="88" data-qr-seed="{{ selected_order.claim_qr_code }}"></canvas>
+                {% if selected_order.payment_status == 'paid' and selected_order.store_claim_code %}
+                    <a class="scanner" href="{% url 'main:validate_claim' %}?code={{ selected_order.store_claim_code }}">
+                        <img class="qr-canvas" src="{{ selected_order.store_claim_image }}" alt="QR klaim toko {{ selected_order.product.merchant_name }}">
                     </a>
-                    <p>Klik QR untuk memvalidasi klaim pembeli.</p>
+                    <p>Klik QR toko untuk memvalidasi semua produknya pada checkout ini.</p>
                 {% else %}
                     <p class="inline-notice">Pesanan ini sudah {{ selected_order.get_payment_status_display|lower }}.</p>
                 {% endif %}

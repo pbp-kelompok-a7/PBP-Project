@@ -262,14 +262,15 @@ class OrderSystem(models.Model):
             and timezone.now() >= self.pickup_deadline
         )
 
-    def mark_paid(self):
+    def mark_paid(self, create_claim_qr=True):
         if self.payment_status != self.PaymentStatus.PENDING:
             raise ValidationError("Hanya pesanan pending yang dapat dibayar.")
         if self.is_payment_expired:
             raise ValidationError("Waktu pembayaran pesanan sudah habis.")
 
         self.payment_status = self.PaymentStatus.PAID
-        self.claim_qr_code = generate_claim_qr_code()
+        if create_claim_qr:
+            self.claim_qr_code = generate_claim_qr_code()
         self.save(update_fields=("payment_status", "claim_qr_code"))
 
 

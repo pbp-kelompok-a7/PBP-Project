@@ -21,72 +21,6 @@
     return `Rp${Math.round(value).toLocaleString("id-ID")}`;
   }
 
-  function drawQr(canvas) {
-    const modules = 29;
-    const quiet = 2;
-    const cell = 8;
-    const total = modules + quiet * 2;
-    const context = canvas.getContext("2d");
-    const seedText = canvas.dataset.qrSeed || "SisaBijak";
-
-    canvas.width = total * cell;
-    canvas.height = total * cell;
-    context.fillStyle = "#fff";
-    context.fillRect(0, 0, canvas.width, canvas.height);
-
-    let seed = 2166136261;
-    for (let index = 0; index < seedText.length; index += 1) {
-      seed ^= seedText.charCodeAt(index);
-      seed = Math.imul(seed, 16777619);
-    }
-
-    function randomBit() {
-      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-      return (seed >>> 30) & 1;
-    }
-
-    function moduleRect(x, y, color = "#050605") {
-      context.fillStyle = color;
-      context.fillRect((x + quiet) * cell, (y + quiet) * cell, cell, cell);
-    }
-
-    function inFinderZone(x, y) {
-      return (
-        (x <= 7 && y <= 7) ||
-        (x >= modules - 8 && y <= 7) ||
-        (x <= 7 && y >= modules - 8)
-      );
-    }
-
-    for (let y = 0; y < modules; y += 1) {
-      for (let x = 0; x < modules; x += 1) {
-        if (inFinderZone(x, y)) continue;
-        const timing = (x === 6 || y === 6) && (x + y) % 2 === 0;
-        const data = randomBit() || ((x * 3 + y * 5 + seedText.length) % 11 === 0);
-        if (timing || data) moduleRect(x, y);
-      }
-    }
-
-    function finder(x, y) {
-      context.fillStyle = "#050605";
-      context.fillRect((x + quiet) * cell, (y + quiet) * cell, 7 * cell, 7 * cell);
-      context.fillStyle = "#fff";
-      context.fillRect((x + quiet + 1) * cell, (y + quiet + 1) * cell, 5 * cell, 5 * cell);
-      context.fillStyle = "#050605";
-      context.fillRect((x + quiet + 2) * cell, (y + quiet + 2) * cell, 3 * cell, 3 * cell);
-    }
-
-    finder(0, 0);
-    finder(modules - 7, 0);
-    finder(0, modules - 7);
-    context.fillStyle = "#050605";
-    context.fillRect((modules - 9 + quiet) * cell, (modules - 9 + quiet) * cell, 5 * cell, 5 * cell);
-    context.fillStyle = "#fff";
-    context.fillRect((modules - 8 + quiet) * cell, (modules - 8 + quiet) * cell, 3 * cell, 3 * cell);
-    moduleRect(modules - 7, modules - 7);
-  }
-
-  document.querySelectorAll(".qr-canvas").forEach(drawQr);
 
   const cartForm = document.querySelector("[data-cart-form]");
   if (cartForm) {
@@ -173,12 +107,13 @@
     scanPayment.disabled = true;
     paymentProof.addEventListener("change", () => {
       const [file] = paymentProof.files;
-      const valid = file && file.size <= 5 * 1024 * 1024 && file.type.startsWith("image/");
+      const valid = file && file.size <= 5 * 1024 * 1024 &&
+        file.type === "image/png" && file.name.toLowerCase().endsWith(".png");
       scanPayment.disabled = !valid;
       if (!file) {
         paymentFileName.textContent = "Belum ada file dipilih";
       } else if (!valid) {
-        paymentFileName.textContent = "Gunakan gambar maksimal 5 MB.";
+        paymentFileName.textContent = "Gunakan PNG asli hasil unduhan, maksimal 5 MB.";
         paymentProof.value = "";
       } else {
         paymentFileName.textContent = file.name;
