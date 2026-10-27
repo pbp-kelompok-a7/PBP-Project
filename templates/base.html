@@ -89,7 +89,10 @@
             {% if user.is_authenticated %}
                 {% if user.is_staff or user.is_superuser %}
                     <a href="{% url 'admin:index' %}" class="btn btn-dark">
-                        Admin
+                        Admin · {{ user.get_full_name|default:user.username }}
+                    </a>
+                    <a href="{% url 'main:logout' %}" class="btn btn-dark">
+                        Logout
                     </a>
                 {% elif user.profile.role == 'merchant' %}
                     <a href="{% url 'main:product_view' %}" class="btn btn-dark">

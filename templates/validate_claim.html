@@ -20,15 +20,15 @@
 
     <section class="panel claim-validation-result">
         {% if order %}
-            <header class="detail-header"><div><h2>Detail Klaim</h2><strong>{{ order.order_number }}</strong></div><span class="status-badge status-{{ order.payment_status|order_status_class }}">{{ order.get_payment_status_display }}</span></header>
+            <header class="detail-header"><div><h2>Detail Klaim {{ order.product.merchant_name }}</h2><strong>Kode {{ order.claim_qr_code }}</strong></div>{% if claim_ready %}<span class="status-badge status-paid">Siap diklaim</span>{% else %}<span class="status-badge status-{{ order.payment_status|order_status_class }}">{{ order.get_payment_status_display }}</span>{% endif %}</header>
             <dl class="detail-list">
                 <div><dt>Pembeli</dt><dd>{{ order.consumer.get_full_name|default:order.consumer.username }}</dd></div>
-                <div><dt>Produk</dt><dd>{{ order.product.nama_produk }}</dd></div>
-                <div><dt>Jumlah</dt><dd>{{ order.quantity }}</dd></div>
-                <div><dt>Total</dt><dd>{{ order.total_price|rupiah }}</dd></div>
-                <div><dt>Batas pickup</dt><dd>{{ order.pickup_deadline|date:'d M Y, H:i' }}</dd></div>
+                {% for item in claim_orders %}
+                    <div><dt>{{ item.product.nama_produk }} × {{ item.quantity }}<br><small>{{ item.get_payment_status_display }}</small></dt><dd>{{ item.total_price|rupiah }}<br><small>Batas {{ item.pickup_deadline|date:'d M Y, H:i' }}</small></dd></div>
+                {% endfor %}
+                <div><dt>Total yang dapat diklaim</dt><dd><strong>{{ claim_total|rupiah }}</strong></dd></div>
             </dl>
-            {% if order.payment_status == 'paid' %}
+            {% if claim_ready %}
                 <form method="post">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="confirm">
