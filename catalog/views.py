@@ -43,6 +43,7 @@ def produk_to_dict(produk):
         "diskon_persen": int(round(produk.discount_rate)),
         "real_price_str": format_rupiah(real_price),
         "discount_price_str": format_rupiah(discount_price),
+        "photo_url": produk.photo_url if hasattr(produk, "photo_url") else "",
     }
 
 

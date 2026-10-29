@@ -697,6 +697,12 @@ def merchant_order_list_view(request):
 @never_cache
 @require_http_methods(["GET", "POST"])
 def validate_claim_view(request):
+    is_ajax = (
+        request.headers.get("x-requested-with") == "XMLHttpRequest"
+        or request.GET.get("format") == "json"
+        or request.POST.get("format") == "json"
+        or "application/json" in request.headers.get("accept", "")
+    )
     order = None
     claim_orders = []
     code = request.GET.get("code", "").strip().upper()
@@ -714,6 +720,8 @@ def validate_claim_view(request):
             .first()
         )
         if order is None:
+            if is_ajax:
+                return JsonResponse({"success": False, "error": "Kode klaim tidak ditemukan untuk merchant ini."})
             messages.error(request, "Kode klaim tidak ditemukan untuk merchant ini.")
         else:
             with transaction.atomic():
@@ -723,9 +731,16 @@ def validate_claim_view(request):
                     expired = _expire_locked_order(item) or expired
             order = next(item for item in claim_orders if item.pk == order.pk)
             if expired:
+                if is_ajax and action != "confirm":
+                    return JsonResponse({"success": False, "error": "Sebagian produk melewati batas pengambilan."})
                 messages.error(request, "Sebagian produk melewati batas pengambilan.")
 
-    if action == "confirm" and order is not None:
+    if action == "confirm":
+        if order is None:
+            if is_ajax:
+                return JsonResponse({"success": False, "error": "Pesanan tidak ditemukan atau kode klaim belum diisi."})
+            messages.error(request, "Pesanan tidak ditemukan.")
+            return redirect("main:validate_claim")
         with transaction.atomic():
             claim_orders = _store_claim_orders(order, lock=True)
             for item in claim_orders:
@@ -735,6 +750,8 @@ def validate_claim_view(request):
                 if item.payment_status == OrderSystem.PaymentStatus.PAID
             ]
             if not ready_orders:
+                if is_ajax:
+                    return JsonResponse({"success": False, "error": "Kode ini sudah digunakan atau belum dibayar."})
                 messages.error(request, "Kode ini sudah digunakan atau belum dibayar.")
                 return redirect("main:validate_claim")
 
@@ -748,10 +765,18 @@ def validate_claim_view(request):
             wallet.balance = F("balance") + total
             wallet.save(update_fields=("balance", "updated_at"))
 
+        if is_ajax:
+            return JsonResponse({
+                "success": True,
+                "message": "QR valid. Pesanan selesai dan saldo merchant diperbarui.",
+                "total": str(total),
+            })
         messages.success(
             request,
             "QR valid. Pesanan selesai dan saldo merchant diperbarui.",
         )
+        if request.POST.get("return_to") == "dashboard":
+            return redirect("main:product_view")
         return redirect(
             f"{reverse('main:merchant_orders')}?tab=history&selected={ready_orders[0].pk}"
         )
@@ -760,6 +785,19 @@ def validate_claim_view(request):
         item for item in claim_orders
         if item.payment_status == OrderSystem.PaymentStatus.PAID
     ]
+
+    if is_ajax and order is not None:
+        return JsonResponse({
+            "success": True,
+            "claim_code": order.claim_qr_code,
+            "buyer_name": order.consumer.get_full_name() or order.consumer.username,
+            "item_name": getattr(order.product, "nama_produk", None) or order.product.product_name,
+            "quantity": order.quantity,
+            "total_price": str(sum((item.total_price for item in ready_orders), Decimal("0"))),
+            "total_price_formatted": _rupiah(sum((item.total_price for item in ready_orders), Decimal("0"))),
+            "can_claim": bool(ready_orders),
+        })
+
     context = {
         "screen": "validate",
         "screen_config": _screen("Validasi QR Klaim", "merchant"),
@@ -812,7 +850,7 @@ def product_view(request):
 @never_cache
 @product_merchant_required
 def product_create(request):
-    form = MerchantProductForm(request.POST or None)
+    form = MerchantProductForm(request.POST or None, request.FILES or None)
     if request.method == "POST" and form.is_valid():
         product = form.save(commit=False)
         product.merchant = request.user
@@ -827,7 +865,7 @@ def product_create(request):
 @product_merchant_required
 def product_update(request, product_id):
     product = get_object_or_404(MerchantProduct, product_id=product_id, merchant=request.user)
-    form = MerchantProductForm(request.POST or None, instance=product)
+    form = MerchantProductForm(request.POST or None, request.FILES or None, instance=product)
     if request.method == "POST" and form.is_valid():
         form.save()
         messages.success(request, "Produk berhasil diperbarui.")

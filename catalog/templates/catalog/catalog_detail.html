@@ -29,8 +29,12 @@
   <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-10">
 
     <!-- foto paket -->
-    <div class="relative h-72 lg:h-[460px] bg-[#F3F0ED] border-2 border-black rounded-3xl flex items-center justify-center text-gray-400">
-      Package Photo
+    <div class="relative h-72 lg:h-[460px] bg-[#F3F0ED] border-2 border-black rounded-3xl flex items-center justify-center text-gray-400 overflow-hidden">
+      {% if produk.photo_url %}
+        <img src="{{ produk.photo_url }}" alt="{{ produk.product_name }}" class="w-full h-full object-cover">
+      {% else %}
+        Package Photo
+      {% endif %}
       <span class="absolute top-5 left-5 bg-[#1A2827] text-white font-bold px-4 py-2 rounded-full">-{{ produk.diskon_persen }}%</span>
     </div>
 
