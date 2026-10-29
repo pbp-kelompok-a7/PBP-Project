@@ -200,7 +200,7 @@ Interactive Gamified Analytics Dashboard & Eco-Impact Tracker untuk memvisualisa
 - `Admin`
 
 # Pembagian Job Desk
--`Mystery Box Marketplace & Catalog` : Debora Putri Dion Simamora
+-`Marketplace & Catalog` : Debora Putri Dion Simamora
 -`Merchant Inventory & Pickup Manager` : Jefry Acmal Dzikhrullah
 -`Order Validation & Claim System` : Rafael Darius Sagala
 -`Carbon & Food Rescue Impact Analytics` : Khalisha Nalani Chandra
