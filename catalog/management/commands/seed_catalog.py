@@ -12,7 +12,7 @@ from django.utils.text import slugify
 from main.models import MerchantProduct, OrderSystem, UserProfile
 
 DATA_PATH = Path(__file__).resolve().parents[2] / "data" / "paket_dummy.json"
-# folder foto contoh, nama file = nama produk versi slug (misal croissant-box.jpg)
+# folder foto contoh, nama file = nama produk versi slug (misal croissant.jpg)
 FOTO_DIR = Path(__file__).resolve().parents[2] / "data" / "foto"
 FOTO_EXT = [".jpg", ".jpeg", ".png", ".webp"]
 
@@ -65,9 +65,15 @@ class Command(BaseCommand):
                 start_pickup += timedelta(days=1)
                 end_pickup += timedelta(days=1)
 
+            nama = item["product_name"]
+            # dulu nama produknya pake "Box" (misal "Croissant Box"), produk yang namanya
+            # masih versi lama diganti dulu biar pas di-seed ulang ga jadi dobel
+            nama_lama = "Rice Box Surprise" if nama == "Rice Surprise" else f"{nama} Box"
+            MerchantProduct.objects.filter(merchant=merchant, product_name=nama_lama).update(product_name=nama)
+
             produk, _ = MerchantProduct.objects.update_or_create(
                 merchant=merchant,
-                product_name=item["product_name"],
+                product_name=nama,
                 defaults={
                     "product_stock": item["product_stock"],
                     "product_status": STATUS_MAP[item["product_status"]],

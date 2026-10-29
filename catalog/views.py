@@ -195,7 +195,7 @@ def review_create_view(request, product_id):
     order = order_yang_bisa_direview(request.user, produk)
     if order is None:
         return JsonResponse(
-            {"success": False, "errors": {"__all__": ["You can only review a box after your order is completed."]}},
+            {"success": False, "errors": {"__all__": ["You can only review an item after your order is completed."]}},
             status=400,
         )
 

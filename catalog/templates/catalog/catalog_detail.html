@@ -52,7 +52,7 @@
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div class="bg-[#E6F4E7] rounded-2xl p-4">
           <p class="text-xs text-gray-600">Stock Left</p>
-          <p class="font-semibold">{{ produk.product_stock }} boxes</p>
+          <p class="font-semibold">{{ produk.product_stock }} left</p>
         </div>
         <div class="bg-[#ECF1F6] rounded-2xl p-4">
           <p class="text-xs text-gray-600">Pickup Time</p>
@@ -70,7 +70,7 @@
           <a href="{% url 'main:checkout_product' produk.product_id %}" class="block text-center bg-black text-white font-semibold rounded-full py-4">Add to Cart</a>
         {% else %}
           <a href="{% url 'main:login' %}" class="block text-center bg-black text-white font-semibold rounded-full py-4">Add to Cart</a>
-          <p class="text-sm text-gray-500">You need to log in as Consumer to add this box to your cart.</p>
+          <p class="text-sm text-gray-500">You need to log in as Consumer to add this item to your cart.</p>
         {% endif %}
       {% elif tersedia %}
         <!-- jam pickup udah lewat, checkout darius juga nolak, jadi tombolnya dimatiin -->
@@ -114,7 +114,7 @@
       <div>
         <p class="text-sm font-semibold mb-2">Your comment</p>
         <textarea name="comment" rows="4" required
-                  placeholder="Tell others how the box was - taste, portion, pickup experience..."
+                  placeholder="Tell others how the food was - taste, portion, pickup experience..."
                   class="w-full border border-gray-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-black"></textarea>
       </div>
 
@@ -123,9 +123,9 @@
       <button type="submit" class="bg-black text-white font-semibold rounded-full px-8 py-3">Submit Review</button>
     </form>
   {% elif sudah_review %}
-    <p class="mt-6 text-sm text-gray-500">You've already reviewed this box. You can edit or delete it below.</p>
+    <p class="mt-6 text-sm text-gray-500">You've already reviewed this item. You can edit or delete it below.</p>
   {% elif user.is_authenticated %}
-    <p class="mt-6 text-sm text-gray-500">You can write a review after you pick up this box.</p>
+    <p class="mt-6 text-sm text-gray-500">You can write a review after you pick up this item.</p>
   {% else %}
     <p class="mt-6 text-sm text-gray-500"><a href="{% url 'main:login' %}" class="font-semibold underline">Log in</a> to write a review.</p>
   {% endif %}

@@ -40,7 +40,7 @@
 
   <!-- info jumlah paket -->
   <p class="mt-8 text-xl font-semibold">
-    <span id="jumlah-paket">{{ jumlah }}</span> boxes ready to rescue
+    <span id="jumlah-paket">{{ jumlah }}</span> items ready to rescue
   </p>
 
   <!-- grid kartu paket (awal dirender django, abis filter diganti sama JS) -->
@@ -70,7 +70,7 @@
       </div>
     </a>
     {% empty %}
-    <p class="col-span-full text-gray-500">No boxes ready to rescue right now.</p>
+    <p class="col-span-full text-gray-500">No items ready to rescue right now.</p>
     {% endfor %}
   </div>
 </main>
@@ -141,7 +141,7 @@
     history.replaceState(null, "", url);
 
     if (hasil.data.length === 0) {
-      grid.innerHTML = `<p class="col-span-full text-gray-500">No boxes match your search.</p>`;
+      grid.innerHTML = `<p class="col-span-full text-gray-500">No items match your search.</p>`;
     } else {
       grid.innerHTML = hasil.data.map(bikinKartu).join("");
     }
