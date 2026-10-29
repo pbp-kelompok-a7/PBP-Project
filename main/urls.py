@@ -15,12 +15,12 @@ urlpatterns = [
     path("logout/", views.logout_user, name="logout"),
 
     #ConsumerProfile
-    path(
+    path( #untuk mengedit profil dan mengubah password konsumen
         "consumer/edit-profile/",
         views.edit_profile_view,
         name="edit_profile",
     ),
-    path(
+    path( #untuk melihat riwayat pesanan konsumen
         "consumer/orders/",
         views.order_history_view,
         name="order_history",
