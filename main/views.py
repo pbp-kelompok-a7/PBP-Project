@@ -157,6 +157,11 @@ def profile(request):
 
     return render(request, "profile.html")
 
+def account_profile_view(request):
+    if not request.user.is_authenticated:
+        return redirect("main:login")
+
+    return render(request, "profile.html")
 @never_cache
 def logout_user(request):
     if request.method == "POST":

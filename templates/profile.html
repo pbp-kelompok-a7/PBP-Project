@@ -1,29 +1,124 @@
 ﻿{% extends 'base.html' %}
+{% load static %}
 
-{% block title %}Profile â€” SisaBijak{% endblock title %}
+{% block title %}Profile — SisaBijak{% endblock title %}
+
+{% block body_class %}profile-reference-page scrollbar-gutter-stable{% endblock body_class %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/tailwind-pages.css' %}">{% endblock extra_css %}
+
+{% block navbar %}
+<header class="dashboard-reference-navbar profile-reference-navbar mx-auto mt-6 flex min-h-16 w-[min(1200px,calc(100%-48px))] flex-nowrap items-center gap-3 rounded-[18px] bg-[#eff6ec] px-[14px] py-[10px] font-sans text-base max-[640px]:w-[calc(100%-24px)] max-[640px]:gap-[6px] max-[640px]:px-[7px] max-[640px]:py-[7px]">
+
+    <a href="{% url 'main:show_main' %}"
+       class="dashboard-reference-brand flex h-10 w-10 shrink-0 items-center justify-center"
+       aria-label="SisaBijak Home">
+        <img src="{% static 'img/tinysisabijaklogo.png' %}" alt="SisaBijak" class="h-full w-full object-contain">
+    </a>
+
+    <form class="dashboard-reference-search flex h-[42px] min-w-[80px] flex-1 items-center gap-2 rounded-[9px] bg-[#40583d] px-[14px] text-[#e5ebe2]"
+          role="search"
+          method="get"
+          action="{% url 'catalog:catalog_list' %}">
+        <svg class="h-[15px] w-[15px] shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="m20 20-4-4"></path>
+        </svg>
+        <input class="w-full min-w-0 flex-1 border-0 bg-transparent p-0 font-sans text-base font-normal text-white shadow-none outline-none placeholder:text-[#e5ebe2]" type="search"
+               name="q"
+               placeholder="Search here"
+               aria-label="Search food">
+    </form>
+
+    <nav class="dashboard-reference-icons flex shrink-0 flex-row items-center gap-2 max-[640px]:gap-[2px]" aria-label="Quick links">
+        <a class="flex h-[34px] w-[26px] shrink-0 items-center justify-center text-[#171917]" href="{% url 'main:order_history' %}"
+           aria-label="Order history"
+           title="Order history">
+            <svg class="h-[18px] w-[18px] shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="5" y="3" width="14" height="18" rx="2"></rect>
+                <path d="M9 7h6M9 11h6M9 15h4"></path>
+            </svg>
+        </a>
+
+        <a class="flex h-[34px] w-[26px] shrink-0 items-center justify-center text-[#171917]" href="{% url 'main:checkout' %}"
+           aria-label="Shopping cart"
+           title="Shopping cart">
+            <svg class="h-[18px] w-[18px] shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 4h2l2.2 11h10.9l2-8H6"></path>
+                <circle cx="9" cy="19" r="1.5"></circle>
+                <circle cx="17" cy="19" r="1.5"></circle>
+            </svg>
+        </a>
+    </nav>
+
+    <a class="dashboard-reference-user flex max-w-[150px] flex-[0_1_auto] items-center gap-[5px] whitespace-nowrap rounded-[20px] bg-white px-[11px] py-[7px] text-base font-normal text-[#171917] no-underline max-[640px]:max-w-[95px]"
+       href="{% url 'main:account_profile' %}"
+       aria-label="My profile">
+        <svg class="h-[18px] w-[18px] shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="8" r="3"></circle>
+            <path d="M5.5 19a6.5 6.5 0 0 1 13 0"></path>
+        </svg>
+        <span>{{ user.username }}</span>
+    </a>
+
+    <form method="post"
+          action="{% url 'main:logout' %}"
+          class="dashboard-reference-logout m-0 shrink-0">
+        {% csrf_token %}
+        <button class="flex h-[38px] w-[38px] items-center justify-center rounded-lg border-0 bg-[#40583d] p-0 text-white" type="submit" aria-label="Logout" title="Logout">
+            <svg class="h-[18px] w-[18px] shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M10 4H5v16h5M14 8l4 4-4 4M8 12h10"></path>
+            </svg>
+        </button>
+    </form>
+
+</header>
+{% endblock navbar %}
 
 {% block content %}
-<main class="profile-page">
-    <section class="profile-card">
-        <p class="profile-eyebrow">Your account</p>
-        <h1>Profile</h1>
+<a href="{% url 'main:profile' %}" class="mx-auto mt-[18px] block w-[min(1200px,calc(100%-48px))] text-xs font-semibold leading-[1.5] text-[#111] no-underline hover:underline max-[640px]:w-[calc(100%-24px)]">
+    ← Back to Profile
+</a>
 
-        <div class="profile-name">
-            <span>Username</span>
-            <strong>{{ user.username }}</strong>
+<main class="profile-page grid w-full place-items-center px-5 pt-[22px] pb-[60px] max-[640px]:pt-5">
+    <section class="profile-card mx-auto mt-6 mb-[60px] w-[min(760px,calc(100vw-48px))] box-border rounded-[14px] border-[1.5px] border-[#344334] bg-[#e7efe4] p-9 max-[640px]:w-[calc(100vw-32px)] max-[640px]:p-6" aria-labelledby="profile-title">
+
+        <h1 class="mb-[26px] block text-[36px] font-extrabold leading-[1.2] text-[#304b31] max-[640px]:text-[32px]" id="profile-title">
+            <span class="profile-eyebrow inline text-[36px] font-bold text-[#304b31] max-[640px]:text-[32px]">Your account,</span>
+            Profile.
+        </h1>
+
+        <div class="profile-name mb-4 flex flex-col gap-1.5 rounded-[9px] bg-white p-[14px]">
+            <span class="text-sm font-semibold text-[#333a32]">Username</span>
+            <strong class="block min-h-[46px] [overflow-wrap:anywhere] rounded-md border border-[#e0e4de] bg-[#f8faf7] px-[14px] py-3 text-base font-medium text-[#252b24]">{{ user.username }}</strong>
         </div>
 
-        <div class="profile-name">
-            <span>Role</span>
-            <strong>{% if user.is_superuser %}Admin{% else %}{{ user.profile.get_role_display }}{% endif %}</strong>
+        <div class="profile-name mb-4 flex flex-col gap-1.5 rounded-[9px] bg-white p-[14px]">
+            <span class="text-sm font-semibold text-[#333a32]">Role</span>
+            <strong class="block min-h-[46px] [overflow-wrap:anywhere] rounded-md border border-[#e0e4de] bg-[#f8faf7] px-[14px] py-3 text-base font-medium text-[#252b24]">
+                {% if user.is_superuser %}
+                    Admin
+                {% else %}
+                    {{ user.profile.get_role_display }}
+                {% endif %}
+            </strong>
         </div>
 
-        <form method="POST" action="{% url 'main:logout' %}">
+        <a href="{% url 'main:show_main' %}"
+           class="mt-3 flex min-h-[50px] w-full items-center justify-between gap-2.5 rounded-3xl bg-[#40583d] px-[18px] py-[13px] text-base font-semibold text-white no-underline hover:bg-[#344a32]">
+            <span>Dashboard Customer</span>
+            <span aria-hidden="true">→</span>
+        </a>
+
+        <form method="post"
+              action="{% url 'main:logout' %}"
+              class="mt-[10px] w-full">
             {% csrf_token %}
-            <button type="submit" class="btn btn-dark profile-logout">
-                Logout
+            <button type="submit" class="flex min-h-[50px] w-full items-center justify-center gap-2.5 rounded-3xl bg-[#40583d] px-[18px] py-[13px] text-base font-semibold text-white hover:bg-[#344a32]">
+                Log out
             </button>
         </form>
+
     </section>
 </main>
 {% endblock content %}

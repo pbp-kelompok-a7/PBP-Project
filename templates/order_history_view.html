@@ -1,76 +1,194 @@
-
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Riwayat Pesanan — SisaBijak{% endblock title %}
 
-{% block content %}
-<main class="product-page">
-    <div class="product-heading">
-        <div>
-            <p class="eyebrow">Consumer Account</p>
-            <h1>Riwayat Pesanan</h1>
-            <p>Lihat pesanan dan status pembayaran Anda.</p>
-        </div>
-    </div>
+{% block body_class %}order-history-reference-page scrollbar-gutter-stable{% endblock body_class %}
 
-    {% if messages %}
-        {% for message in messages %}
-            <p class="flash-message">{{ message }}</p>
-        {% endfor %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/tailwind-pages.css' %}">{% endblock extra_css %}
+
+{% block navbar %}
+<header class="order-history-reference-navbar mx-auto mt-6 flex min-h-16 w-[min(1200px,calc(100%-48px))] flex-nowrap items-center gap-3 rounded-[18px] bg-[#eff6ec] px-[14px] py-[10px] font-sans text-base max-[640px]:w-[calc(100%-24px)] max-[640px]:gap-[6px] max-[640px]:px-[7px] max-[640px]:py-[7px]">
+
+    <!-- Logo -->
+    <a href="{% url 'main:show_main' %}"
+       class="order-history-brand flex h-10 w-10 shrink-0 items-center justify-center"
+       aria-label="SisaBijak Home">
+        <img src="{% static 'img/tinysisabijaklogo.png' %}" alt="SisaBijak" class="h-full w-full object-contain">
+    </a>
+
+    <!-- Search -->
+    <form class="order-history-search flex h-[42px] min-w-[80px] flex-1 items-center gap-2 rounded-[9px] bg-[#40583d] px-[14px] text-[#e5ebe2]"
+          role="search"
+          method="get"
+          action="{% url 'catalog:catalog_list' %}">
+        <svg class="h-[15px] w-[15px] shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="m20 20-4-4"></path>
+        </svg>
+        <input
+            type="search"
+            name="q"
+            value="{{ keyword|default:'' }}"
+            placeholder="Search here"
+            aria-label="Search food"
+            class="w-full min-w-0 flex-1 border-0 bg-transparent p-0 font-sans text-base font-normal text-white shadow-none outline-none placeholder:text-[#e5ebe2]"
+        >
+    </form>
+
+    <!-- Quick links -->
+    <nav class="order-history-nav-icons flex shrink-0 flex-row items-center gap-2 max-[640px]:gap-[2px]" aria-label="Quick links">
+        <a class="flex h-[34px] w-[26px] shrink-0 items-center justify-center text-[#171917]" href="{% url 'main:order_history' %}"
+           aria-label="Order history"
+           title="Order history">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="5" y="3" width="14" height="18" rx="2"></rect>
+                <path d="M9 7h6M9 11h6M9 15h4"></path>
+            </svg>
+        </a>
+
+        <a class="flex h-[34px] w-[26px] shrink-0 items-center justify-center text-[#171917]" href="{% url 'main:checkout' %}"
+           aria-label="Shopping cart"
+           title="Shopping cart">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 4h2l2.2 11h10.9l2-8H6"></path>
+                <circle cx="9" cy="19" r="1.5"></circle>
+                <circle cx="17" cy="19" r="1.5"></circle>
+            </svg>
+        </a>
+    </nav>
+
+    <!-- Logged-in user -->
+    {% if user.is_authenticated %}
+        <a href="{% url 'main:profile' %}"
+           class="order-history-user flex max-w-[150px] items-center gap-[5px] whitespace-nowrap rounded-[20px] bg-white px-[11px] py-[7px] text-base font-normal text-[#171917] no-underline max-[640px]:max-w-[95px]"
+           aria-label="My profile">
+            <svg class="h-[18px] w-[18px] shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="8" r="3"></circle>
+                <path d="M5.5 19a6.5 6.5 0 0 1 13 0"></path>
+            </svg>
+            <span>{{ user.username }}</span>
+        </a>
     {% endif %}
 
-    <form method="get" class="merchant-account">
-        <label for="status">Filter status pesanan:</label>
-        <select name="status" id="status">
+    <!-- Logout -->
+    {% if user.is_authenticated %}
+        <form method="post"
+              action="{% url 'main:logout' %}"
+              class="order-history-logout m-0 shrink-0">
+            {% csrf_token %}
+            <button class="flex h-[38px] w-[38px] items-center justify-center rounded-lg border-0 bg-[#40583d] p-0 text-white" type="submit" aria-label="Logout" title="Logout">
+                <svg class="h-[18px] w-[18px] shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M10 4H5v16h5M14 8l4 4-4 4M8 12h10"></path>
+                </svg>
+            </button>
+        </form>
+    {% endif %}
+
+</header>
+{% endblock navbar %}
+
+{% block content %}
+<a href="{% url 'main:show_main' %}" class="mx-auto mt-[18px] block w-[min(1200px,calc(100%-48px))] text-xs font-semibold leading-[1.5] text-[#111] no-underline hover:underline max-[640px]:w-[calc(100%-24px)]">
+    ← Back to Home
+</a>
+<main class="order-history-page mx-auto mt-11 mb-[60px] w-[min(1200px,calc(100%-48px))] font-sans text-base max-[760px]:mt-7 max-[760px]:w-[calc(100%-32px)] max-[520px]:w-[calc(100%-28px)]">
+
+    <!-- Page heading -->
+    <header class="order-history-heading mb-6">
+        <h1 class="mb-[10px] text-4xl font-[750] leading-[1.2] tracking-[-0.035em] text-[#40583d] max-[520px]:text-[32px]">Riwayat Pesanan</h1>
+        <p class="text-base leading-[1.5] text-[#333] max-[520px]:text-[15px]">Lihat pesanan dan status pembayaran Anda.</p>
+    </header>
+
+    <!-- Django feedback messages -->
+    {% if messages %}
+        <div class="order-history-messages my-4">
+            {% for message in messages %}
+                <p class="my-2 rounded-lg border border-[#cbdcc8] bg-[#e7efe4] px-4 py-[14px] text-base text-[#344b32]">{{ message }}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Status filter -->
+    <form method="get" class="order-history-filter mb-6 flex flex-wrap items-center gap-[14px] rounded-xl bg-[#e7efe4] p-[18px] px-6 max-[520px]:p-4">
+        <label class="text-base font-semibold" for="status">Filter status pesanan:</label>
+
+        <select class="min-h-11 rounded-lg border border-[#d5ddd2] bg-white px-[14px] py-2.5 text-base" name="status" id="status">
             <option value="">Semua status</option>
+
             {% for value, label in status_choices %}
-                <option value="{{ value }}"
-                    {% if selected_status == value %}selected{% endif %}>
+                <option
+                    value="{{ value }}"
+                    {% if selected_status == value %}selected{% endif %}
+                >
                     {{ label }}
                 </option>
             {% endfor %}
         </select>
-        <button type="submit" class="btn btn-dark">Filter</button>
+
+        <button type="submit" class="min-h-[42px] rounded-[20px] bg-[#40583d] px-[18px] py-2.5 text-sm font-semibold text-white hover:bg-[#344b32]">
+            Filter
+        </button>
     </form>
 
-    {% if orders %}
-        <div class="product-table-wrap">
-            <table class="product-table">
-                <thead>
-                    <tr>
-                        <th>Produk</th>
-                        <th>Jumlah</th>
-                        <th>Total</th>
-                        <th>Tanggal</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for order in orders %}
-                    <tr>
-                        <td>
-                            <strong>{{ order.product.product_name }}</strong>
-                            <br>
-                            <small>{{ order.product.product_id }}</small>
-                        </td>
-                        <td>{{ order.quantity }}</td>
-                        <td>Rp{{ order.total_price|floatformat:0 }}</td>
-                        <td>{{ order.created_at|date:"d M Y, H:i" }}</td>
-                        <td>
-                            <span class="status status-{{ order.payment_status }}">
-                                {{ order.get_payment_status_display }}
-                            </span>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% else %}
-        <section class="empty-products">
-            <h2>Belum ada pesanan</h2>
-            <p>Riwayat pesanan kamu akan muncul di sini.</p>
-        </section>
-    {% endif %}
+    <!-- Order results -->
+    <section class="order-history-results" aria-label="Daftar pesanan">
+
+        {% if orders %}
+            <div class="order-history-table-wrap overflow-x-auto rounded-xl border border-[#dfe5dc] bg-white">
+                <table class="order-history-table w-full min-w-[720px] border-collapse text-base">
+                    <thead class="bg-[#e7efe4] text-left text-[#344b32]">
+                        <tr>
+                            <th class="px-5 py-[18px]">Produk</th>
+                            <th class="px-5 py-[18px]">Jumlah</th>
+                            <th class="px-5 py-[18px]">Total</th>
+                            <th class="px-5 py-[18px]">Tanggal</th>
+                            <th class="px-5 py-[18px]">Status</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for order in orders %}
+                            <tr>
+                                <td class="border-t border-[#edf0eb] px-5 py-[18px]">
+                                    <strong>
+                                        {{ order.product.product_name }}
+                                    </strong>
+                                    <br>
+                                    <small>
+                                        {{ order.product.product_id }}
+                                    </small>
+                                </td>
+
+                                <td class="border-t border-[#edf0eb] px-5 py-[18px]">{{ order.quantity }}</td>
+
+                                <td class="border-t border-[#edf0eb] px-5 py-[18px]">
+                                    Rp{{ order.total_price|floatformat:0 }}
+                                </td>
+
+                                <td class="border-t border-[#edf0eb] px-5 py-[18px]">
+                                    {{ order.created_at|date:"d M Y, H:i" }}
+                                </td>
+
+                                <td class="border-t border-[#edf0eb] px-5 py-[18px]">
+                                    <span class="status order-status-badge status-{{ order.payment_status }}">
+                                        {{ order.get_payment_status_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+        {% else %}
+            <div class="order-history-empty grid min-h-[260px] place-content-center rounded-xl border border-[#dfe5dc] bg-white px-6 py-9 text-center">
+                <h2 class="text-[22px] font-semibold text-[#344b32]">Belum ada pesanan</h2>
+                <p class="text-base text-[#444]">Riwayat pesanan kamu akan muncul di sini.</p>
+            </div>
+        {% endif %}
+
+    </section>
+
 </main>
 {% endblock content %}

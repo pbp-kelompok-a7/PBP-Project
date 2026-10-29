@@ -1,69 +1,132 @@
-
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Dashboard Consumer — SisaBijak{% endblock title %}
 
-{% block content %}
-<main class="product-page">
-    <div class="product-heading">
-        <div>
-            <p class="eyebrow">Consumer Dashboard</p>
-            <h1>Profil Saya</h1>
-            <p>Lihat pesanan dan kontribusi Anda dalam mengurangi makanan terbuang.</p>
-        </div>
-        <a class="btn btn-dark" href="{% url 'main:order_history' %}">
-            Riwayat Pesanan
+{% block body_class %}consumer-dashboard-reference-page scrollbar-gutter-stable{% endblock body_class %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/tailwind-pages.css' %}">{% endblock extra_css %}
+
+{% block navbar %}
+<header class="dashboard-reference-navbar mx-auto mt-6 flex min-h-16 w-[min(1200px,calc(100%-48px))] flex-nowrap items-center gap-3 rounded-[18px] bg-[#eff6ec] px-[14px] py-[10px] font-sans text-base max-[640px]:w-[calc(100%-24px)] max-[640px]:gap-[6px] max-[640px]:px-[7px] max-[640px]:py-[7px]">
+    <a href="{% url 'main:show_main' %}" class="dashboard-reference-brand flex h-10 w-10 shrink-0 items-center justify-center" aria-label="SisaBijak Home">
+        <img src="{% static 'img/tinysisabijaklogo.png' %}" alt="SisaBijak" class="h-full w-full object-contain">
+    </a>
+
+    <form class="dashboard-reference-search flex h-[42px] min-w-[80px] flex-1 items-center gap-2 rounded-[9px] bg-[#40583d] px-[14px] text-[#e5ebe2]" role="search" method="get" action="{% url 'catalog:catalog_list' %}">
+        <svg class="h-[15px] w-[15px] shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="m20 20-4-4"></path>
+        </svg>
+        <input class="w-full min-w-0 flex-1 border-0 bg-transparent p-0 font-sans text-base font-normal text-white shadow-none outline-none placeholder:text-[#e5ebe2]" type="search" name="q" value="{{ keyword|default:'' }}" placeholder="Search here" aria-label="Search food">
+    </form>
+
+    <nav class="dashboard-reference-icons flex shrink-0 flex-row items-center gap-2 max-[640px]:gap-[2px]" aria-label="Quick links">
+        <a class="flex h-[34px] w-[26px] shrink-0 items-center justify-center text-[#171917]" href="{% url 'main:order_history' %}" aria-label="Order history" title="Order history">
+            <svg class="h-[18px] w-[18px] shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="5" y="3" width="14" height="18" rx="2"></rect>
+                <path d="M9 7h6M9 11h6M9 15h4"></path>
+            </svg>
         </a>
-         <form method="post" action="{% url 'main:logout' %}">
+        <a class="flex h-[34px] w-[26px] shrink-0 items-center justify-center text-[#171917]" href="{% url 'main:checkout' %}" aria-label="Shopping cart" title="Shopping cart">
+            <svg class="h-[18px] w-[18px] shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 4h2l2.2 11h10.9l2-8H6"></path>
+                <circle cx="9" cy="19" r="1.5"></circle>
+                <circle cx="17" cy="19" r="1.5"></circle>
+            </svg>
+        </a>
+    </nav>
+
+    <a class="dashboard-reference-user flex max-w-[150px] flex-[0_1_auto] items-center gap-[5px] whitespace-nowrap rounded-[20px] bg-white px-[11px] py-[7px] text-base font-normal text-[#171917] no-underline max-[640px]:max-w-[95px]" href="{% url 'main:account_profile' %}" aria-label="My profile">
+        <svg class="h-[18px] w-[18px] shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="8" r="3"></circle>
+            <path d="M5.5 19a6.5 6.5 0 0 1 13 0"></path>
+        </svg>
+        <span class="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{{ user.username }}</span>
+    </a>
+
+    <form method="post" action="{% url 'main:logout' %}" class="dashboard-reference-logout m-0 shrink-0">
+        {% csrf_token %}
+        <button class="flex h-[38px] w-[38px] items-center justify-center rounded-lg border-0 bg-[#40583d] p-0 text-white" type="submit" aria-label="Logout" title="Logout">
+            <svg class="h-[18px] w-[18px] shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M10 4H5v16h5M14 8l4 4-4 4M8 12h10"></path>
+            </svg>
+        </button>
+    </form>
+</header>
+{% endblock navbar %}
+
+{% block content %}
+<a href="{% url 'main:show_main' %}" class="mx-auto mt-[18px] block w-[min(1200px,calc(100%-48px))] text-xs font-semibold leading-[1.5] text-[#111] no-underline hover:underline max-[640px]:w-[calc(100%-24px)]">
+    ← Back to Home
+</a>
+<div class="consumer-dashboard-page mx-auto mt-11 mb-0 w-[min(1200px,calc(100%-48px))] font-sans text-base max-[640px]:mt-7 max-[640px]:w-[calc(100%-28px)]">
+
+    <section class="consumer-dashboard-heading mb-6 flex items-center justify-between gap-6 max-[760px]:items-start max-[760px]:flex-col max-[760px]:gap-4">
+        <div class="consumer-dashboard-title min-w-0 flex-1">
+            <h1 class="mb-[10px] text-[36px] font-[750] leading-[1.2] tracking-[-0.035em] text-[#40583d] max-[640px]:text-[32px]">Profil Saya</h1>
+            <p class="m-0 text-base leading-[1.5] text-[#333]">Lihat pesanan dan kontribusi Anda dalam mengurangi makanan terbuang.</p>
+        </div>
+
+        <div class="consumer-dashboard-actions flex flex-wrap items-center justify-end gap-[10px] max-[760px]:justify-start">
+            <a class="inline-flex min-h-[36px] items-center justify-center rounded-lg border border-[#40583d] bg-[#40583d] px-[18px] py-[11px] text-[14px] font-semibold leading-[1.2] text-white no-underline transition-colors duration-200 hover:border-[#344b32] hover:bg-[#344b32]" href="{% url 'main:order_history' %}">
+                Riwayat Pesanan
+            </a>
+
+            <form method="post" action="{% url 'main:logout' %}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-outline">
-                    Logout
-                </button>
+                <button type="submit" class="inline-flex min-h-[36px] items-center justify-center rounded-lg border border-[#40583d] bg-white px-[18px] py-[11px] text-[14px] font-semibold leading-[1.2] text-[#40583d] transition-colors duration-200 hover:bg-[#40583d] hover:text-white">Logout</button>
             </form>
         </div>
-    </div>
+    </section>
 
     {% if messages %}
-        {% for message in messages %}
-            <p class="flash-message">{{ message }}</p>
-        {% endfor %}
+        <div class="consumer-dashboard-messages my-4">
+            {% for message in messages %}
+                <p class="my-2 rounded-lg border border-[#cbdcc8] bg-[#e7efe4] px-[14px] py-3 text-sm text-[#344b32]">{{ message }}</p>
+            {% endfor %}
+        </div>
     {% endif %}
 
-    <section class="merchant-account" aria-label="Informasi akun konsumen">
-        <div>
-            <span>Username</span>
-            <strong>{{ user.username }}</strong>
+    <section class="consumer-dashboard-account mb-[30px] flex w-fit max-w-full flex-wrap items-center gap-7 rounded-2xl bg-[linear-gradient(110deg,#8eb392_0%,#c0d7bf_65%,#e7efe4_100%)] px-[22px] py-[18px] max-[760px]:w-full max-[760px]:gap-x-6 max-[760px]:gap-y-[18px] max-[640px]:gap-x-5 max-[640px]:gap-y-[14px]" aria-label="Informasi akun konsumen">
+        <div class="consumer-account-item flex min-w-[92px] flex-col gap-1 max-[520px]:min-w-0 max-[520px]:flex-[1_1_40%]">
+            <span class="text-[14px] font-[650] leading-[1.5] text-[#203820]">Username</span>
+            <strong class="[overflow-wrap:anywhere] text-[14px] font-medium leading-[1.5] text-[#243b24]">{{ user.username }}</strong>
         </div>
-        <div>
-            <span>Nomor Telepon</span>
-            <strong>{{ consumer_profile.phone_number|default:"Belum diisi" }}</strong>
+
+        <div class="consumer-account-item flex min-w-[92px] flex-col gap-1 max-[520px]:min-w-0 max-[520px]:flex-[1_1_40%]">
+            <span class="text-[14px] font-[650] leading-[1.5] text-[#203820]">Nomor Telepon</span>
+            <strong class="[overflow-wrap:anywhere] text-[14px] font-medium leading-[1.5] text-[#243b24]">{{ consumer_profile.phone_number|default:"Belum diisi" }}</strong>
         </div>
-        <div>
-            <span>Pesanan Selesai</span>
-            <strong>{{ consumer_profile.total_orders_completed }}</strong>
+
+        <div class="consumer-account-item flex min-w-[92px] flex-col gap-1 max-[520px]:min-w-0 max-[520px]:flex-[1_1_40%]">
+            <span class="text-[14px] font-[650] leading-[1.5] text-[#203820]">Pesanan Selesai</span>
+            <strong class="[overflow-wrap:anywhere] text-[14px] font-medium leading-[1.5] text-[#243b24]">{{ consumer_profile.total_orders_completed }}</strong>
         </div>
     </section>
 
-    <section class="consumer-stats">
-        <article>
-            <p>Total Uang Dihemat</p>
-            <h2>Rp{{ consumer_profile.total_money_saved|floatformat:0 }}</h2>
+    <section class="consumer-dashboard-stats mb-7 grid grid-cols-2 gap-4 max-[640px]:grid-cols-1 max-[520px]:gap-3" aria-label="Statistik kontribusi">
+        <article class="consumer-stat-card min-h-[100px] min-w-0 rounded-lg border border-[#dedede] bg-white px-6 py-[22px] max-[520px]:p-[18px]">
+            <p class="mb-3 text-[17px] leading-[1.5] text-[#252525]">Total Uang Dihemat</p>
+            <h2 class="m-0 [overflow-wrap:anywhere] text-xl font-bold leading-[1.5] text-[#111]">Rp{{ consumer_profile.total_money_saved|floatformat:0 }}</h2>
         </article>
 
-        <article>
-            <p>Total Emisi Karbon Dicegah</p>
-            <h2>{{ consumer_profile.total_co2_prevented }} kg CO₂</h2>
+        <article class="consumer-stat-card min-h-[100px] min-w-0 rounded-lg border border-[#dedede] bg-white px-6 py-[22px] max-[520px]:p-[18px]">
+            <p class="mb-3 text-[17px] leading-[1.5] text-[#252525]">Total Emisi Karbon Dicegah</p>
+            <h2 class="m-0 [overflow-wrap:anywhere] text-xl font-bold leading-[1.5] text-[#111]">{{ consumer_profile.total_co2_prevented }} kg CO₂</h2>
         </article>
     </section>
 
-    <div class="product-heading">
-        <div>
-            <h2>Pengaturan Akun</h2>
-            <p>Perbarui informasi pribadi atau kata sandi Anda.</p>
+    <section class="consumer-dashboard-settings flex min-h-[82px] items-center justify-between gap-5 rounded-[14px] bg-[linear-gradient(105deg,#8eb392_0%,#b6d2b6_58%,#e5efe3_100%)] px-[26px] py-5 max-[520px]:items-start max-[520px]:flex-col max-[520px]:gap-4 max-[520px]:p-5">
+        <div class="consumer-settings-copy min-w-0">
+            <h2 class="mb-2 text-[23px] font-[750] leading-[1.3] text-[#344b32]">Pengaturan Akun</h2>
+            <p class="m-0 text-[15px] leading-[1.5] text-[#283c28]">Perbarui informasi pribadi atau kata sandi Anda.</p>
         </div>
-        <a class="btn btn-outline" href="{% url 'main:edit_profile' %}">
+
+        <a class="inline-flex shrink-0 items-center justify-center rounded-lg border border-[#40583d] bg-white px-[18px] py-[10px] text-[14px] font-semibold leading-[1.2] text-[#40583d] no-underline transition-colors duration-200 hover:bg-[#40583d] hover:text-white" href="{% url 'main:edit_profile' %}">
             Edit Profil
         </a>
-    </div>
-</main>
+    </section>
+
+</div>
 {% endblock content %}
