@@ -1,69 +1,163 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Dashboard Merchant — SisaBijak{% endblock title %}
 
 {% block content %}
-<main class="product-page">
-    <div class="product-heading">
-        <div>
-            <p class="eyebrow">Merchant Dashboard</p>
-            <h1>Dashboard Merchant</h1>
-            <p>Kelola produk, pesanan masuk, riwayat redeem, dan validasi kode pengambilan.</p>
-        </div>
-        <a class="btn btn-dark" href="{% url 'main:product_create' %}">+ Tambah Produk</a>
+<main class="w-full max-w-[1140px] mx-auto px-4 py-8 font-inter">
+
+    <!-- Greeting Header -->
+    <div class="mb-6">
+        <h1 class="text-3xl md:text-4xl font-bold text-sb-dark tracking-tight">
+            Hello, {{ user.get_full_name|default:user.username }}
+        </h1>
     </div>
 
-    <nav class="order-section-nav" aria-label="Dashboard merchant">
-        <a class="secondary-button" href="{% url 'main:product_view' %}" aria-current="page">Dashboard &amp; Produk</a>
-        <a class="secondary-button" href="{% url 'main:merchant_orders' %}">Pesanan Masuk</a>
-        <a class="secondary-button" href="{% url 'main:merchant_orders' %}?tab=history">Riwayat Redeem</a>
-        <a class="secondary-button" href="{% url 'main:validate_claim' %}">Validasi Kode</a>
-    </nav>
+    <!-- Subnav Tabs & Action Buttons -->
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <!-- Subnav Tabs -->
+        <div class="flex items-center gap-3">
+            <a href="{% url 'main:product_view' %}" class="px-6 py-2 rounded-full font-semibold text-sm transition-all bg-sb-mint border-2 border-sb-green text-sb-dark shadow-sm">
+                Products
+            </a>
+            <a href="{% url 'main:merchant_orders' %}" class="px-6 py-2 rounded-full font-semibold text-sm transition-all bg-white border-2 border-sb-dark text-sb-dark hover:bg-sb-light-gray">
+                Orders
+            </a>
+            <a href="{% url 'main:merchant_orders' %}?tab=history" class="px-6 py-2 rounded-full font-semibold text-sm transition-all bg-white border-2 border-sb-dark text-sb-dark hover:bg-sb-light-gray">
+                History
+            </a>
+        </div>
 
+        <!-- Action Buttons -->
+        <div class="flex items-center gap-3">
+            <a href="{% url 'main:validate_claim' %}" class="px-5 py-2.5 rounded-xl bg-sb-green hover:bg-[#2c472c] text-white font-semibold text-sm transition-colors shadow-sm">
+                Scan QR Claim
+            </a>
+            <a href="{% url 'main:product_create' %}" class="px-5 py-2.5 rounded-xl bg-sb-green hover:bg-[#2c472c] text-white font-semibold text-sm transition-colors shadow-sm">
+                + Add Product
+            </a>
+        </div>
+    </div>
+
+    <!-- Alert / Flash Messages -->
     {% if messages %}
-        {% for message in messages %}<p class="flash-message">{{ message }}</p>{% endfor %}
+        <div class="mb-6 space-y-2">
+            {% for message in messages %}
+                <div class="p-4 rounded-xl text-sm font-medium {% if message.tags == 'success' %}bg-sb-mint text-sb-green border border-sb-green{% elif message.tags == 'error' %}bg-red-50 text-sb-red border border-sb-red{% else %}bg-sb-light-gray text-sb-dark border border-sb-gray{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
     {% endif %}
 
-    <section class="merchant-account" aria-label="Informasi akun merchant">
-        <div>
-            <span>Username</span>
-            <strong>{{ user.username }}</strong>
-        </div>
-        <div>
-            <span>Role</span>
-            <strong>{{ user.profile.get_role_display }}</strong>
-        </div>
-        <form method="post" action="{% url 'main:logout' %}">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-outline">Logout</button>
-        </form>
-    </section>
+    <!-- Outer Card Container -->
+    <div class="bg-sb-warm-gray border border-sb-gray rounded-2xl p-6 shadow-sm min-h-[500px]">
+        {% if products %}
+            <div class="overflow-x-auto rounded-xl border border-sb-gray/40 bg-white shadow-sm">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-sb-sage text-sb-dark text-xs md:text-sm font-bold uppercase tracking-wider">
+                            <th class="py-3.5 px-4 rounded-tl-xl">Product</th>
+                            <th class="py-3.5 px-3 text-center">Stock</th>
+                            <th class="py-3.5 px-3">Status</th>
+                            <th class="py-3.5 px-3">Price</th>
+                            <th class="py-3.5 px-3 text-center">Discount</th>
+                            <th class="py-3.5 px-3">Start Pickup</th>
+                            <th class="py-3.5 px-3">End Pickup</th>
+                            <th class="py-3.5 px-4 text-center rounded-tr-xl">Edit</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-sb-gray/50 text-sm">
+                        {% for product in products %}
+                            <tr class="hover:bg-sb-mint/40 transition-colors">
+                                <!-- Product Name & Code -->
+                                <td class="py-4 px-4 align-middle">
+                                    <strong class="text-sb-dark font-semibold text-base block">{{ product.product_name }}</strong>
+                                    <span class="text-xs text-sb-muted font-mono tracking-wider">{{ product.product_id }}</span>
+                                </td>
 
-    {% if products %}
-        <div class="product-table-wrap">
-            <table class="product-table">
-                <thead><tr><th>Produk</th><th>Stok</th><th>Status</th><th>Harga</th><th>Pickup</th><th>Aksi</th></tr></thead>
-                <tbody>
-                    {% for product in products %}
-                    <tr>
-                        <td><strong>{{ product.product_name }}</strong><br><small>{{ product.product_id }}</small></td>
-                        <td>{{ product.product_stock }}</td>
-                        <td><span class="status status-{{ product.product_status }}">{{ product.get_product_status_display }}</span></td>
-                        <td><s>Rp{{ product.real_price|floatformat:0 }}</s><br><strong>Rp{{ product.discount_price|floatformat:0 }}</strong><br><small>Diskon {{ product.discount_rate|floatformat:2 }}%</small></td>
-                        <td>{{ product.start_pickup|date:"d M Y, H:i" }}<br><small>s.d. {{ product.end_pickup|date:"d M Y, H:i" }}</small></td>
-                        <td class="product-actions">
-                            <a href="{% url 'main:product_update' product.product_id %}">Edit</a>
-                            <form method="post" action="{% url 'main:product_delete' product.product_id %}" onsubmit="return confirm('Hapus produk ini?');">
-                                {% csrf_token %}<button type="submit">Hapus</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% else %}
-        <section class="empty-products"><h2>Belum ada produk</h2><p>Unggah produk pertama Anda untuk mulai menerima pesanan pickup.</p></section>
-    {% endif %}
+                                <!-- Stock -->
+                                <td class="py-4 px-3 text-center align-middle font-semibold text-sb-dark">
+                                    {{ product.product_stock }}
+                                </td>
+
+                                <!-- Status -->
+                                <td class="py-4 px-3 align-middle">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {% if product.product_status == 'available' %}bg-green-100 text-green-800{% elif product.product_status == 'sold_out' %}bg-yellow-100 text-yellow-800{% else %}bg-gray-100 text-gray-700{% endif %}">
+                                        {{ product.get_product_status_display }}
+                                    </span>
+                                </td>
+
+                                <!-- Price -->
+                                <td class="py-4 px-3 align-middle">
+                                    <strong class="text-sb-dark font-semibold block">Rp. {{ product.discount_price|floatformat:0 }}</strong>
+                                    <span class="text-xs text-sb-muted line-through block">Rp. {{ product.real_price|floatformat:0 }}</span>
+                                </td>
+
+                                <!-- Discount -->
+                                <td class="py-4 px-3 text-center align-middle font-medium text-sb-dark">
+                                    {{ product.discount_rate|floatformat:0 }}%
+                                </td>
+
+                                <!-- Start Pickup -->
+                                <td class="py-4 px-3 align-middle text-xs md:text-sm text-sb-dark whitespace-nowrap">
+                                    {{ product.start_pickup|date:"d F Y, H.i" }}
+                                </td>
+
+                                <!-- End Pickup -->
+                                <td class="py-4 px-3 align-middle text-xs md:text-sm text-sb-dark whitespace-nowrap">
+                                    {{ product.end_pickup|date:"d F Y, H.i" }}
+                                </td>
+
+                                <!-- Actions: Delete & Edit -->
+                                <td class="py-4 px-4 text-center align-middle whitespace-nowrap">
+                                    <div class="inline-flex items-center gap-2">
+                                        <!-- Delete Button (Red) -->
+                                        <form method="post" action="{% url 'main:product_delete' product.product_id %}" onsubmit="return confirm('Hapus produk ini?');" class="inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="w-8 h-8 rounded-lg bg-sb-red hover:bg-[#a93226] text-white flex items-center justify-center transition-colors shadow-sm" title="Hapus Produk">
+                                                <!-- Trash Icon -->
+                                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <polyline points="3 6 5 6 21 6"/>
+                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                                    <line x1="10" y1="11" x2="10" y2="17"/>
+                                                    <line x1="14" y1="11" x2="14" y2="17"/>
+                                                </svg>
+                                            </button>
+                                        </form>
+
+                                        <!-- Edit Button (Green) -->
+                                        <a href="{% url 'main:product_update' product.product_id %}" class="w-8 h-8 rounded-lg bg-sb-green hover:bg-[#2c472c] text-white flex items-center justify-center transition-colors shadow-sm" title="Edit Produk">
+                                            <!-- Pencil/Edit Icon -->
+                                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                                            </svg>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <!-- Empty state -->
+            <div class="py-16 text-center">
+                <div class="w-16 h-16 rounded-full bg-sb-mint text-sb-green flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                    </svg>
+                </div>
+                <h2 class="text-xl font-bold text-sb-dark mb-2">Belum ada produk</h2>
+                <p class="text-sb-muted text-sm max-w-md mx-auto mb-6">
+                    Unggah produk surplus makanan pertama Anda untuk mulai menerima pesanan pickup dari konsumen.
+                </p>
+                <a href="{% url 'main:product_create' %}" class="inline-flex items-center px-6 py-2.5 bg-sb-green hover:bg-[#2c472c] text-white font-semibold text-sm rounded-xl transition-colors shadow-sm">
+                    + Tambah Produk Sekarang
+                </a>
+            </div>
+        {% endif %}
+    </div>
 </main>
 {% endblock content %}
