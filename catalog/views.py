@@ -1,6 +1,6 @@
 from datetime import timedelta
 from django.contrib.auth.decorators import login_required
-from django.db.models import Avg, Q
+from django.db.models import Avg, Count, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -26,10 +26,24 @@ def jam(waktu):
     return timezone.localtime(waktu).strftime("%H:%M")
 
 
+def hari_pickup(waktu):
+    # buat label di kartu: hari ini = Today, besok = Tomorrow, selain itu tanggalnya
+    tanggal = timezone.localtime(waktu).date()
+    hari_ini = timezone.localdate()
+    if tanggal == hari_ini:
+        return "Today"
+    if tanggal == hari_ini + timedelta(days=1):
+        return "Tomorrow"
+    return tanggal.strftime("%d %b")
+
+
 def produk_to_dict(produk):
     # ubah MerchantProduct jadi dict biar bisa dipake di template sama json
     real_price = int(round(produk.real_price))
     discount_price = int(round(produk.discount_price))
+    # rata_rating & jumlah_review dari annotate di ambil_produk_tersedia
+    # kalau produknya ga lewat situ (misal di halaman detail), anggap belum ada review
+    rata_rating = getattr(produk, "rata_rating", None)
     return {
         "product_id": produk.product_id,
         "product_name": produk.product_name,
@@ -44,6 +58,11 @@ def produk_to_dict(produk):
         "real_price_str": format_rupiah(real_price),
         "discount_price_str": format_rupiah(discount_price),
         "photo_url": produk.photo_url if hasattr(produk, "photo_url") else "",
+        "hari_pickup": hari_pickup(produk.start_pickup),
+        # stok tinggal dikit, di kartu muncul badge Almost gone
+        "hampir_habis": produk.product_stock <= 2,
+        "rating": round(rata_rating, 1) if rata_rating else 0,
+        "jumlah_review": getattr(produk, "jumlah_review", 0),
     }
 
 
@@ -65,6 +84,8 @@ def ambil_produk_tersedia():
             product_stock__gt=0,
         )
         .select_related("merchant")
+        # sekalian ngitung rata-rata rating & jumlah review tiap produk buat di kartu
+        .annotate(rata_rating=Avg("reviews__rating"), jumlah_review=Count("reviews"))
         .order_by("-discount_rate", "product_name")
     )
 

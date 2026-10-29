@@ -33,18 +33,30 @@
       {% if produk.photo_url %}
         <img src="{{ produk.photo_url }}" alt="{{ produk.product_name }}" class="w-full h-full object-cover">
       {% else %}
-        Package Photo
+        Product Photo
       {% endif %}
-      <span class="absolute top-5 left-5 bg-[#1A2827] text-white font-bold px-4 py-2 rounded-full">-{{ produk.diskon_persen }}%</span>
+      <span class="absolute top-5 left-5 bg-white text-[#D92D20] font-bold px-4 py-2 rounded-full shadow">-{{ produk.diskon_persen }}%</span>
+      {% if tersedia and produk.hampir_habis %}
+        <span class="absolute top-5 right-5 bg-[#EB5708] text-white font-bold px-4 py-2 rounded-full">Almost gone</span>
+      {% endif %}
     </div>
 
     <!-- info paket -->
     <div class="space-y-4">
       <p class="text-gray-600 font-medium">{{ produk.merchant_name }}</p>
       <h1 class="text-3xl md:text-4xl font-bold">{{ produk.product_name }}</h1>
+      <!-- rating singkat, angkanya dari ringkasan_rating di views -->
+      <p class="text-sm">
+        {% if rating.jumlah %}
+          <span class="font-semibold">&#9733; {{ rating.rata_rata }}</span>
+          <span class="text-gray-500">({{ rating.jumlah }} review{{ rating.jumlah|pluralize }})</span>
+        {% else %}
+          <span class="text-gray-500">No reviews yet</span>
+        {% endif %}
+      </p>
 
       <div class="flex items-center gap-3">
-        <span class="text-3xl font-bold">{{ produk.discount_price_str }}</span>
+        <span class="text-3xl font-bold text-[#EB5708]">{{ produk.discount_price_str }}</span>
         <span class="text-lg text-gray-400 line-through">{{ produk.real_price_str }}</span>
         <span class="bg-[#E6F4E7] text-[#384739] text-sm font-medium px-3 py-1 rounded-full">Save {{ produk.diskon_persen }}%</span>
       </div>
@@ -56,7 +68,7 @@
         </div>
         <div class="bg-[#ECF1F6] rounded-2xl p-4">
           <p class="text-xs text-gray-600">Pickup Time</p>
-          <p class="font-semibold">{{ produk.start_pickup }} - {{ produk.end_pickup }}</p>
+          <p class="font-semibold">{{ produk.hari_pickup }}, {{ produk.start_pickup }} - {{ produk.end_pickup }}</p>
         </div>
         <div class="bg-[#F3F0ED] rounded-2xl p-4">
           <p class="text-xs text-gray-600">Location</p>
@@ -105,7 +117,7 @@
           {% for i in "12345" %}
           <label class="cursor-pointer">
             <input type="radio" name="rating" value="{{ i }}" class="peer sr-only" required>
-            <span class="w-12 h-12 flex items-center justify-center border border-gray-300 rounded-xl font-semibold peer-checked:bg-black peer-checked:text-white peer-checked:border-black">{{ i }}</span>
+            <span class="w-14 h-12 flex items-center justify-center gap-1 border border-gray-300 rounded-xl font-semibold peer-checked:bg-[#EB5708] peer-checked:text-white peer-checked:border-[#EB5708]">{{ i }} &#9733;</span>
           </label>
           {% endfor %}
         </div>

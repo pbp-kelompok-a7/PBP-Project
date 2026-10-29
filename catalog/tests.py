@@ -154,6 +154,47 @@ class CatalogTest(TestCase):
         data = response.json()
         self.assertEqual([p["product_name"] for p in data["data"]], ["Cheesecake"])
 
+    # ===== info tambahan di kartu (desain v2) =====
+
+    def test_json_ada_rating_dan_jumlah_review(self):
+        # 2 consumer review bread: rating 5 sama 4, rata-ratanya 4.5
+        for username, nilai in [("nadia", 5), ("budi", 4)]:
+            user = User.objects.create_user(username=username, password="pass12345")
+            order = bikin_order(user, self.bread)
+            Review.objects.create(user=user, product=self.bread, order=order, rating=nilai, comment="Enak banget")
+        data = self.client.get(reverse("catalog:catalog_json")).json()["data"]
+        bread = next(p for p in data if p["product_name"] == "Bread Surprise")
+        donut = next(p for p in data if p["product_name"] == "Donut Mix")
+        self.assertEqual(bread["rating"], 4.5)
+        self.assertEqual(bread["jumlah_review"], 2)
+        # produk yang belum ada review ratingnya 0
+        self.assertEqual(donut["rating"], 0)
+        self.assertEqual(donut["jumlah_review"], 0)
+
+    def test_json_label_hari_pickup(self):
+        data = self.client.get(reverse("catalog:catalog_json")).json()["data"]
+        # bikin_produk pickup-nya 1 jam lagi, jadi bisa Today atau Tomorrow (kalau udah mau tengah malem)
+        hari_ini = timezone.localdate()
+        tanggal = timezone.localtime(self.bread.start_pickup).date()
+        harusnya = "Today" if tanggal == hari_ini else "Tomorrow"
+        for produk in data:
+            self.assertEqual(produk["hari_pickup"], harusnya)
+
+    def test_badge_almost_gone(self):
+        # stok 2 ke bawah = hampir habis, stok 5 = belum
+        self.donut.product_stock = 2
+        self.donut.save()
+        data = self.client.get(reverse("catalog:catalog_json")).json()["data"]
+        donut = next(p for p in data if p["product_name"] == "Donut Mix")
+        bread = next(p for p in data if p["product_name"] == "Bread Surprise")
+        self.assertTrue(donut["hampir_habis"])
+        self.assertFalse(bread["hampir_habis"])
+        response = self.client.get(reverse("catalog:catalog_list"))
+        # di halaman html cuma donut yang dapet badge
+        habis = [p["product_name"] for p in response.context["produk_list"] if p["hampir_habis"]]
+        self.assertEqual(habis, ["Donut Mix"])
+        self.assertContains(response, "Almost gone")
+
     # ===== halaman detail =====
 
     def test_detail_bisa_dibuka(self):
