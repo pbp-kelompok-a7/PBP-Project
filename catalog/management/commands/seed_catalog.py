@@ -4,6 +4,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from django.contrib.auth.models import User
+from django.core.files import File
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 from django.utils.text import slugify
@@ -11,6 +12,9 @@ from django.utils.text import slugify
 from main.models import MerchantProduct, OrderSystem, UserProfile
 
 DATA_PATH = Path(__file__).resolve().parents[2] / "data" / "paket_dummy.json"
+# folder foto contoh, nama file = nama produk versi slug (misal croissant.jpg)
+FOTO_DIR = Path(__file__).resolve().parents[2] / "data" / "foto"
+FOTO_EXT = [".jpg", ".jpeg", ".png", ".webp"]
 
 STATUS_MAP = {
     "Available": MerchantProduct.ProductStatus.AVAILABLE,
@@ -40,6 +44,7 @@ class Command(BaseCommand):
             data = json.load(f)
 
         jumlah_produk = 0
+        jumlah_foto = 0
         for item in data:
             merchant = self.ambil_merchant(item["name_merchant"])
 
@@ -60,9 +65,15 @@ class Command(BaseCommand):
                 start_pickup += timedelta(days=1)
                 end_pickup += timedelta(days=1)
 
-            MerchantProduct.objects.update_or_create(
+            nama = item["product_name"]
+            # dulu nama produknya pake "Box" (misal "Croissant Box"), produk yang namanya
+            # masih versi lama diganti dulu biar pas di-seed ulang ga jadi dobel
+            nama_lama = "Rice Box Surprise" if nama == "Rice Surprise" else f"{nama} Box"
+            MerchantProduct.objects.filter(merchant=merchant, product_name=nama_lama).update(product_name=nama)
+
+            produk, _ = MerchantProduct.objects.update_or_create(
                 merchant=merchant,
-                product_name=item["product_name"],
+                product_name=nama,
                 defaults={
                     "product_stock": item["product_stock"],
                     "product_status": STATUS_MAP[item["product_status"]],
@@ -74,11 +85,27 @@ class Command(BaseCommand):
                 },
             )
             jumlah_produk += 1
+            if self.pasang_foto(produk):
+                jumlah_foto += 1
 
-        self.stdout.write(self.style.SUCCESS(f"{jumlah_produk} produk berhasil di-seed"))
+        self.stdout.write(self.style.SUCCESS(f"{jumlah_produk} produk berhasil di-seed ({jumlah_foto} foto baru)"))
 
         if options["demo_consumer"]:
             self.bikin_order_demo(options["demo_consumer"])
+
+    def pasang_foto(self, produk):
+        # kalau produk udah punya foto (misal diupload merchant), ga usah ditimpa
+        if produk.product_photo:
+            return False
+        nama = slugify(produk.product_name)
+        for ext in FOTO_EXT:
+            path = FOTO_DIR / f"{nama}{ext}"
+            if path.exists():
+                with open(path, "rb") as f:
+                    produk.product_photo.save(f"{nama}{ext}", File(f), save=True)
+                return True
+        # fotonya belum ada, produk tetep ke-seed tanpa foto
+        return False
 
     def ambil_merchant(self, nama_toko):
         # 1 toko = 1 akun merchant, nama toko disimpen di first_name

@@ -1,11 +1,15 @@
 from datetime import timedelta
 from decimal import Decimal
+import shutil
+import tempfile
 from io import StringIO
+from pathlib import Path
+from unittest import mock
 
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -54,17 +58,17 @@ class CatalogTest(TestCase):
         roti = bikin_merchant("roti-kita", "Roti Kita Bakery")
         kopi = bikin_merchant("kopi-senja", "Kopi Senja Cafe")
         # harga diskon: 40000 x 37.5% = 15000
-        self.bread = bikin_produk(roti, "Bread Surprise Box", 40000, "62.5")
+        self.bread = bikin_produk(roti, "Bread Surprise", 40000, "62.5")
         # harga diskon: 30000 x 40% = 12000
-        self.donut = bikin_produk(roti, "Donut Mix Box", 30000, "60")
+        self.donut = bikin_produk(roti, "Donut Mix", 30000, "60")
         # harga diskon: 80000 x 40% = 32000
-        self.cake = bikin_produk(kopi, "Cheesecake Box", 80000, "60")
-        self.habis = bikin_produk(kopi, "Brownies Box", 50000, "60", stok=0)
+        self.cake = bikin_produk(kopi, "Cheesecake", 80000, "60")
+        self.habis = bikin_produk(kopi, "Brownies", 50000, "60", stok=0)
         self.inactive = bikin_produk(
-            kopi, "Soto Ayam Box", 35000, "57", status=MerchantProduct.ProductStatus.INACTIVE
+            kopi, "Soto Ayam", 35000, "57", status=MerchantProduct.ProductStatus.INACTIVE
         )
         self.sold_out = bikin_produk(
-            kopi, "Mochi Box", 50000, "60", status=MerchantProduct.ProductStatus.SOLD_OUT
+            kopi, "Mochi", 50000, "60", status=MerchantProduct.ProductStatus.SOLD_OUT
         )
 
     # ===== halaman katalog =====
@@ -77,11 +81,11 @@ class CatalogTest(TestCase):
 
     def test_katalog_cuma_nampilin_produk_available(self):
         response = self.client.get(reverse("catalog:catalog_list"))
-        self.assertContains(response, "Bread Surprise Box")
+        self.assertContains(response, "Bread Surprise")
         # stok 0, inactive, sama sold out ga boleh muncul
-        self.assertNotContains(response, "Brownies Box")
-        self.assertNotContains(response, "Soto Ayam Box")
-        self.assertNotContains(response, "Mochi Box")
+        self.assertNotContains(response, "Brownies")
+        self.assertNotContains(response, "Soto Ayam")
+        self.assertNotContains(response, "Mochi")
         self.assertEqual(response.context["jumlah"], 3)
 
     def test_katalog_nampilin_harga_dan_nama_toko(self):
@@ -100,8 +104,8 @@ class CatalogTest(TestCase):
     def test_katalog_search_dari_navbar(self):
         # search bar navbar ngirim ?q= ke halaman catalog
         response = self.client.get(reverse("catalog:catalog_list"), {"q": "donut"})
-        self.assertContains(response, "Donut Mix Box")
-        self.assertNotContains(response, "Cheesecake Box")
+        self.assertContains(response, "Donut Mix")
+        self.assertNotContains(response, "Cheesecake")
         self.assertEqual(response.context["jumlah"], 1)
         self.assertEqual(response.context["keyword"], "donut")
 
@@ -122,7 +126,7 @@ class CatalogTest(TestCase):
         response = self.client.get(reverse("catalog:catalog_json"), {"q": "donut"})
         data = response.json()
         self.assertEqual(data["jumlah"], 1)
-        self.assertEqual(data["data"][0]["product_name"], "Donut Mix Box")
+        self.assertEqual(data["data"][0]["product_name"], "Donut Mix")
 
     def test_json_search_nama_toko(self):
         response = self.client.get(reverse("catalog:catalog_json"), {"q": "roti kita"})
@@ -138,17 +142,58 @@ class CatalogTest(TestCase):
     def test_json_filter_harga_dibawah_15rb(self):
         response = self.client.get(reverse("catalog:catalog_json"), {"harga": "lt15"})
         data = response.json()
-        self.assertEqual([p["product_name"] for p in data["data"]], ["Donut Mix Box"])
+        self.assertEqual([p["product_name"] for p in data["data"]], ["Donut Mix"])
 
     def test_json_filter_harga_15rb_sampai_25rb(self):
         response = self.client.get(reverse("catalog:catalog_json"), {"harga": "15to25"})
         data = response.json()
-        self.assertEqual([p["product_name"] for p in data["data"]], ["Bread Surprise Box"])
+        self.assertEqual([p["product_name"] for p in data["data"]], ["Bread Surprise"])
 
     def test_json_filter_harga_diatas_25rb(self):
         response = self.client.get(reverse("catalog:catalog_json"), {"harga": "gt25"})
         data = response.json()
-        self.assertEqual([p["product_name"] for p in data["data"]], ["Cheesecake Box"])
+        self.assertEqual([p["product_name"] for p in data["data"]], ["Cheesecake"])
+
+    # ===== info tambahan di kartu (desain v2) =====
+
+    def test_json_ada_rating_dan_jumlah_review(self):
+        # 2 consumer review bread: rating 5 sama 4, rata-ratanya 4.5
+        for username, nilai in [("nadia", 5), ("budi", 4)]:
+            user = User.objects.create_user(username=username, password="pass12345")
+            order = bikin_order(user, self.bread)
+            Review.objects.create(user=user, product=self.bread, order=order, rating=nilai, comment="Enak banget")
+        data = self.client.get(reverse("catalog:catalog_json")).json()["data"]
+        bread = next(p for p in data if p["product_name"] == "Bread Surprise")
+        donut = next(p for p in data if p["product_name"] == "Donut Mix")
+        self.assertEqual(bread["rating"], 4.5)
+        self.assertEqual(bread["jumlah_review"], 2)
+        # produk yang belum ada review ratingnya 0
+        self.assertEqual(donut["rating"], 0)
+        self.assertEqual(donut["jumlah_review"], 0)
+
+    def test_json_label_hari_pickup(self):
+        data = self.client.get(reverse("catalog:catalog_json")).json()["data"]
+        # bikin_produk pickup-nya 1 jam lagi, jadi bisa Today atau Tomorrow (kalau udah mau tengah malem)
+        hari_ini = timezone.localdate()
+        tanggal = timezone.localtime(self.bread.start_pickup).date()
+        harusnya = "Today" if tanggal == hari_ini else "Tomorrow"
+        for produk in data:
+            self.assertEqual(produk["hari_pickup"], harusnya)
+
+    def test_badge_almost_gone(self):
+        # stok 2 ke bawah = hampir habis, stok 5 = belum
+        self.donut.product_stock = 2
+        self.donut.save()
+        data = self.client.get(reverse("catalog:catalog_json")).json()["data"]
+        donut = next(p for p in data if p["product_name"] == "Donut Mix")
+        bread = next(p for p in data if p["product_name"] == "Bread Surprise")
+        self.assertTrue(donut["hampir_habis"])
+        self.assertFalse(bread["hampir_habis"])
+        response = self.client.get(reverse("catalog:catalog_list"))
+        # di halaman html cuma donut yang dapet badge
+        habis = [p["product_name"] for p in response.context["produk_list"] if p["hampir_habis"]]
+        self.assertEqual(habis, ["Donut Mix"])
+        self.assertContains(response, "Almost gone")
 
     # ===== halaman detail =====
 
@@ -156,7 +201,7 @@ class CatalogTest(TestCase):
         response = self.client.get(reverse("catalog:catalog_detail", args=[self.bread.product_id]))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "catalog/catalog_detail.html")
-        self.assertContains(response, "Bread Surprise Box")
+        self.assertContains(response, "Bread Surprise")
         self.assertContains(response, "Add to Cart")
         self.assertContains(response, "Jl. Margonda Raya No. 12, Depok")
 
@@ -204,7 +249,7 @@ class ReviewTest(TestCase):
 
     def setUp(self):
         merchant = bikin_merchant("roti-kita", "Roti Kita Bakery")
-        self.produk = bikin_produk(merchant, "Bread Surprise Box", 40000, "62.5")
+        self.produk = bikin_produk(merchant, "Bread Surprise", 40000, "62.5")
         self.user = User.objects.create_user(username="nadia", password="pass12345")
         self.user_lain = User.objects.create_user(username="raka", password="pass12345")
         self.order = bikin_order(self.user, self.produk)
@@ -224,7 +269,7 @@ class ReviewTest(TestCase):
 
     def test_str_review(self):
         review = self.bikin_review(self.user, self.order)
-        self.assertEqual(str(review), "nadia - Bread Surprise Box (5/5)")
+        self.assertEqual(str(review), "nadia - Bread Surprise (5/5)")
 
     # ===== create =====
 
@@ -325,14 +370,14 @@ class ReviewTest(TestCase):
         self.client.login(username="baru", password="pass12345")
         response = self.client.get(self.detail_url)
         self.assertNotContains(response, 'id="review-form"')
-        self.assertContains(response, "after you pick up this box")
+        self.assertContains(response, "after you pick up this item")
 
     def test_detail_udah_review_form_ilang(self):
         self.bikin_review(self.user, self.order)
         self.login()
         response = self.client.get(self.detail_url)
         self.assertNotContains(response, 'id="review-form"')
-        self.assertContains(response, "already reviewed this box")
+        self.assertContains(response, "already reviewed this item")
 
     # ===== update =====
 
@@ -393,19 +438,57 @@ class ReviewTest(TestCase):
         self.assertEqual(response.status_code, 405)
 
 
+# foto hasil seed disimpen di folder sementara, biar folder media asli ga kotor
+MEDIA_TES = tempfile.mkdtemp()
+
+
+@override_settings(MEDIA_ROOT=MEDIA_TES)
 class SeedCatalogTest(TestCase):
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(MEDIA_TES, ignore_errors=True)
+
+    def test_seed_pasang_foto_kalau_filenya_ada(self):
+        # bikin folder foto palsu yang isinya cuma 1 foto
+        folder = Path(tempfile.mkdtemp())
+        (folder / "croissant.jpg").write_bytes(b"foto palsu")
+        with mock.patch("catalog.management.commands.seed_catalog.FOTO_DIR", folder):
+            call_command("seed_catalog", stdout=StringIO())
+            croissant = MerchantProduct.objects.get(product_name="Croissant")
+            nama_foto = croissant.product_photo.name
+            self.assertTrue(nama_foto.startswith("products/croissant"))
+            # produk yang fotonya ga ada tetep ke-seed tanpa foto
+            self.assertFalse(MerchantProduct.objects.get(product_name="Mochi").product_photo)
+            # seed lagi ga bikin foto dobel
+            call_command("seed_catalog", stdout=StringIO())
+            croissant.refresh_from_db()
+            self.assertEqual(croissant.product_photo.name, nama_foto)
+        shutil.rmtree(folder, ignore_errors=True)
 
     def test_seed_bikin_50_produk(self):
         call_command("seed_catalog", stdout=StringIO())
         self.assertEqual(MerchantProduct.objects.count(), 50)
-        produk = MerchantProduct.objects.get(product_name="Bread Surprise Box")
+        produk = MerchantProduct.objects.get(product_name="Bread Surprise")
         self.assertEqual(produk.discount_price, Decimal("15000.00"))
         self.assertEqual(produk.merchant_name, "Roti Kita Bakery")
         self.assertEqual(produk.merchant.profile.role, UserProfile.Role.MERCHANT)
         # 60000 diskon ke 20000 itu 66.67%, dibuletin jadi 67% biar harganya Rp19.800
-        croissant = MerchantProduct.objects.get(product_name="Croissant Box")
+        croissant = MerchantProduct.objects.get(product_name="Croissant")
         self.assertEqual(croissant.discount_rate, Decimal("67.00"))
         self.assertEqual(croissant.discount_price, Decimal("19800.00"))
+
+    def test_seed_ganti_nama_produk_lama_tanpa_dobel(self):
+        # anggap di database masih ada produk dari seed lama yang namanya pake "Box"
+        merchant = User.objects.create_user(username="croissant-corner", first_name="Croissant Corner")
+        lama = bikin_produk(merchant, "Croissant Box", 60000, "67")
+        call_command("seed_catalog", stdout=StringIO())
+        # produk lamanya cuma diganti nama, bukan bikin produk baru
+        self.assertEqual(MerchantProduct.objects.count(), 50)
+        self.assertFalse(MerchantProduct.objects.filter(product_name__endswith="Box").exists())
+        lama.refresh_from_db()
+        self.assertEqual(lama.product_name, "Croissant")
 
     def test_seed_jam_pickup_masih_bisa_dicheckout(self):
         call_command("seed_catalog", stdout=StringIO())

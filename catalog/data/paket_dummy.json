@@ -1,7 +1,7 @@
 [
   {
     "product_id": "P001",
-    "product_name": "Bread Surprise Box",
+    "product_name": "Bread Surprise",
     "product_stock": 3,
     "product_status": "Available",
     "real_price": 40000,
@@ -14,7 +14,7 @@
   },
   {
     "product_id": "P002",
-    "product_name": "Pastry & Coffee Box",
+    "product_name": "Pastry & Coffee",
     "product_stock": 5,
     "product_status": "Available",
     "real_price": 55000,
@@ -27,7 +27,7 @@
   },
   {
     "product_id": "P003",
-    "product_name": "Cake Slice Box",
+    "product_name": "Cake Slice",
     "product_stock": 2,
     "product_status": "Available",
     "real_price": 70000,
@@ -40,7 +40,7 @@
   },
   {
     "product_id": "P004",
-    "product_name": "Healthy Meal Box",
+    "product_name": "Healthy Meal",
     "product_stock": 4,
     "product_status": "Available",
     "real_price": 45000,
@@ -53,7 +53,7 @@
   },
   {
     "product_id": "P005",
-    "product_name": "Donut Mix Box",
+    "product_name": "Donut Mix",
     "product_stock": 6,
     "product_status": "Available",
     "real_price": 35000,
@@ -66,7 +66,7 @@
   },
   {
     "product_id": "P006",
-    "product_name": "Rice Box Surprise",
+    "product_name": "Rice Surprise",
     "product_stock": 3,
     "product_status": "Available",
     "real_price": 35000,
@@ -79,7 +79,7 @@
   },
   {
     "product_id": "P007",
-    "product_name": "Croissant Box",
+    "product_name": "Croissant",
     "product_stock": 2,
     "product_status": "Available",
     "real_price": 60000,
@@ -92,7 +92,7 @@
   },
   {
     "product_id": "P008",
-    "product_name": "Toast Combo Box",
+    "product_name": "Toast Combo",
     "product_stock": 7,
     "product_status": "Available",
     "real_price": 40000,
@@ -105,7 +105,7 @@
   },
   {
     "product_id": "P009",
-    "product_name": "Brownies Box",
+    "product_name": "Brownies",
     "product_stock": 0,
     "product_status": "Sold Out",
     "real_price": 50000,
@@ -118,7 +118,7 @@
   },
   {
     "product_id": "P010",
-    "product_name": "Sourdough Loaf Box",
+    "product_name": "Sourdough Loaf",
     "product_stock": 4,
     "product_status": "Available",
     "real_price": 60000,
@@ -131,7 +131,7 @@
   },
   {
     "product_id": "P011",
-    "product_name": "Matcha Dessert Box",
+    "product_name": "Matcha Dessert",
     "product_stock": 3,
     "product_status": "Available",
     "real_price": 65000,
@@ -144,7 +144,7 @@
   },
   {
     "product_id": "P012",
-    "product_name": "Cheesecake Box",
+    "product_name": "Cheesecake",
     "product_stock": 2,
     "product_status": "Available",
     "real_price": 90000,
@@ -157,7 +157,7 @@
   },
   {
     "product_id": "P013",
-    "product_name": "Salad Bowl Box",
+    "product_name": "Salad Bowl",
     "product_stock": 5,
     "product_status": "Available",
     "real_price": 50000,
@@ -170,7 +170,7 @@
   },
   {
     "product_id": "P014",
-    "product_name": "Glazed Donut Box",
+    "product_name": "Glazed Donut",
     "product_stock": 8,
     "product_status": "Available",
     "real_price": 40000,
@@ -183,7 +183,7 @@
   },
   {
     "product_id": "P015",
-    "product_name": "Nasi Ayam Box",
+    "product_name": "Nasi Ayam",
     "product_stock": 4,
     "product_status": "Available",
     "real_price": 40000,
@@ -196,7 +196,7 @@
   },
   {
     "product_id": "P016",
-    "product_name": "Pain au Chocolat Box",
+    "product_name": "Pain au Chocolat",
     "product_stock": 3,
     "product_status": "Available",
     "real_price": 70000,
@@ -209,7 +209,7 @@
   },
   {
     "product_id": "P017",
-    "product_name": "Kaya Toast Box",
+    "product_name": "Kaya Toast",
     "product_stock": 6,
     "product_status": "Available",
     "real_price": 35000,
@@ -222,7 +222,7 @@
   },
   {
     "product_id": "P018",
-    "product_name": "Banana Bread Box",
+    "product_name": "Banana Bread",
     "product_stock": 4,
     "product_status": "Available",
     "real_price": 45000,
@@ -235,7 +235,7 @@
   },
   {
     "product_id": "P019",
-    "product_name": "Cinnamon Roll Box",
+    "product_name": "Cinnamon Roll",
     "product_stock": 3,
     "product_status": "Available",
     "real_price": 55000,
@@ -248,7 +248,7 @@
   },
   {
     "product_id": "P020",
-    "product_name": "Mie Goreng Box",
+    "product_name": "Mie Goreng",
     "product_stock": 10,
     "product_status": "Available",
     "real_price": 30000,
@@ -261,7 +261,7 @@
   },
   {
     "product_id": "P021",
-    "product_name": "Ayam Geprek Box",
+    "product_name": "Ayam Geprek",
     "product_stock": 6,
     "product_status": "Available",
     "real_price": 35000,
@@ -274,7 +274,7 @@
   },
   {
     "product_id": "P022",
-    "product_name": "Bagel Box",
+    "product_name": "Bagel",
     "product_stock": 3,
     "product_status": "Available",
     "real_price": 60000,
@@ -287,7 +287,7 @@
   },
   {
     "product_id": "P023",
-    "product_name": "Muffin Mix Box",
+    "product_name": "Muffin Mix",
     "product_stock": 5,
     "product_status": "Available",
     "real_price": 48000,
@@ -300,7 +300,7 @@
   },
   {
     "product_id": "P024",
-    "product_name": "Tiramisu Cup Box",
+    "product_name": "Tiramisu Cup",
     "product_stock": 2,
     "product_status": "Available",
     "real_price": 80000,
@@ -313,7 +313,7 @@
   },
   {
     "product_id": "P025",
-    "product_name": "Chocolate Fudge Box",
+    "product_name": "Chocolate Fudge",
     "product_stock": 3,
     "product_status": "Available",
     "real_price": 70000,
@@ -326,7 +326,7 @@
   },
   {
     "product_id": "P026",
-    "product_name": "Onigiri Box",
+    "product_name": "Onigiri",
     "product_stock": 6,
     "product_status": "Available",
     "real_price": 45000,
@@ -339,7 +339,7 @@
   },
   {
     "product_id": "P027",
-    "product_name": "Sushi Roll Box",
+    "product_name": "Sushi Roll",
     "product_stock": 2,
     "product_status": "Available",
     "real_price": 85000,
@@ -352,7 +352,7 @@
   },
   {
     "product_id": "P028",
-    "product_name": "Pempek Box",
+    "product_name": "Pempek",
     "product_stock": 4,
     "product_status": "Available",
     "real_price": 50000,
@@ -365,7 +365,7 @@
   },
   {
     "product_id": "P029",
-    "product_name": "Martabak Manis Box",
+    "product_name": "Martabak Manis",
     "product_stock": 3,
     "product_status": "Available",
     "real_price": 60000,
@@ -378,7 +378,7 @@
   },
   {
     "product_id": "P030",
-    "product_name": "Martabak Telur Box",
+    "product_name": "Martabak Telur",
     "product_stock": 3,
     "product_status": "Available",
     "real_price": 55000,
@@ -391,7 +391,7 @@
   },
   {
     "product_id": "P031",
-    "product_name": "Jajanan Pasar Box",
+    "product_name": "Jajanan Pasar",
     "product_stock": 8,
     "product_status": "Available",
     "real_price": 30000,
@@ -404,7 +404,7 @@
   },
   {
     "product_id": "P032",
-    "product_name": "Lapis Legit Box",
+    "product_name": "Lapis Legit",
     "product_stock": 2,
     "product_status": "Available",
     "real_price": 75000,
@@ -417,7 +417,7 @@
   },
   {
     "product_id": "P033",
-    "product_name": "Smoothie Bowl Box",
+    "product_name": "Smoothie Bowl",
     "product_stock": 4,
     "product_status": "Available",
     "real_price": 55000,
@@ -430,7 +430,7 @@
   },
   {
     "product_id": "P034",
-    "product_name": "Grain Bowl Box",
+    "product_name": "Grain Bowl",
     "product_stock": 3,
     "product_status": "Available",
     "real_price": 60000,
@@ -443,7 +443,7 @@
   },
   {
     "product_id": "P035",
-    "product_name": "Roti Sobek Box",
+    "product_name": "Roti Sobek",
     "product_stock": 6,
     "product_status": "Available",
     "real_price": 30000,
@@ -456,7 +456,7 @@
   },
   {
     "product_id": "P036",
-    "product_name": "Roti Isi Box",
+    "product_name": "Roti Isi",
     "product_stock": 5,
     "product_status": "Available",
     "real_price": 35000,
@@ -469,7 +469,7 @@
   },
   {
     "product_id": "P037",
-    "product_name": "Pizza Slice Box",
+    "product_name": "Pizza Slice",
     "product_stock": 3,
     "product_status": "Available",
     "real_price": 80000,
@@ -482,7 +482,7 @@
   },
   {
     "product_id": "P038",
-    "product_name": "Garlic Bread Box",
+    "product_name": "Garlic Bread",
     "product_stock": 4,
     "product_status": "Available",
     "real_price": 40000,
@@ -495,7 +495,7 @@
   },
   {
     "product_id": "P039",
-    "product_name": "Dimsum Box",
+    "product_name": "Dimsum",
     "product_stock": 5,
     "product_status": "Available",
     "real_price": 60000,
@@ -508,7 +508,7 @@
   },
   {
     "product_id": "P040",
-    "product_name": "Bakpao Box",
+    "product_name": "Bakpao",
     "product_stock": 6,
     "product_status": "Available",
     "real_price": 35000,
@@ -521,7 +521,7 @@
   },
   {
     "product_id": "P041",
-    "product_name": "Iced Coffee & Cookies Box",
+    "product_name": "Iced Coffee & Cookies",
     "product_stock": 4,
     "product_status": "Available",
     "real_price": 50000,
@@ -534,7 +534,7 @@
   },
   {
     "product_id": "P042",
-    "product_name": "Cookies Jar Box",
+    "product_name": "Cookies Jar",
     "product_stock": 3,
     "product_status": "Available",
     "real_price": 45000,
@@ -547,7 +547,7 @@
   },
   {
     "product_id": "P043",
-    "product_name": "Lasagna Box",
+    "product_name": "Lasagna",
     "product_stock": 2,
     "product_status": "Available",
     "real_price": 90000,
@@ -560,7 +560,7 @@
   },
   {
     "product_id": "P044",
-    "product_name": "Pasta Carbonara Box",
+    "product_name": "Pasta Carbonara",
     "product_stock": 3,
     "product_status": "Available",
     "real_price": 75000,
@@ -573,7 +573,7 @@
   },
   {
     "product_id": "P045",
-    "product_name": "Gado-Gado Box",
+    "product_name": "Gado-Gado",
     "product_stock": 5,
     "product_status": "Available",
     "real_price": 30000,
@@ -586,7 +586,7 @@
   },
   {
     "product_id": "P046",
-    "product_name": "Fruit Tart Box",
+    "product_name": "Fruit Tart",
     "product_stock": 2,
     "product_status": "Available",
     "real_price": 85000,
@@ -599,7 +599,7 @@
   },
   {
     "product_id": "P047",
-    "product_name": "Baguette Box",
+    "product_name": "Baguette",
     "product_stock": 0,
     "product_status": "Sold Out",
     "real_price": 50000,
@@ -612,7 +612,7 @@
   },
   {
     "product_id": "P048",
-    "product_name": "Egg Tart Box",
+    "product_name": "Egg Tart",
     "product_stock": 0,
     "product_status": "Sold Out",
     "real_price": 60000,
@@ -625,7 +625,7 @@
   },
   {
     "product_id": "P049",
-    "product_name": "Soto Ayam Box",
+    "product_name": "Soto Ayam",
     "product_stock": 5,
     "product_status": "Inactive",
     "real_price": 35000,
@@ -638,7 +638,7 @@
   },
   {
     "product_id": "P050",
-    "product_name": "Mochi Box",
+    "product_name": "Mochi",
     "product_stock": 0,
     "product_status": "Sold Out",
     "real_price": 50000,
