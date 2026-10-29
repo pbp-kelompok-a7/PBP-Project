@@ -27,7 +27,7 @@ def jam_hari_ini(teks):
 
 
 class Command(BaseCommand):
-    help = "Isi database dengan 50 produk Mystery Box dari catalog/data/paket_dummy.json"
+    help = "Isi database dengan 50 produk dari catalog/data/paket_dummy.json"
 
     def add_arguments(self, parser):
         parser.add_argument(

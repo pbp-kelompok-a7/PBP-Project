@@ -11,16 +11,16 @@ SisaBijak adalah platform marketplace food rescue berbasis Django yang menghubun
 5. Ghaisan Nabil Iradat (2506619051)
 
 # Fitur
-### 1. Modul Mystery Box Marketplace & Catalog
+### 1. Modul Marketplace & Catalog
 **Penanggung Jawab** : Debora Putri Dion Simamora
 
-**Deskripsi Fitur:** Katalog tempat pembeli (mahasiswa/pekerja) bisa ngeliat, nyari, dan milih paket Mystery Box dari resto/cafe yang lagi diskon gede (50-70%) pas mau tutup toko, lengkap dengan ulasan dari pembeli yang udah ngambil pesanannya.
+**Deskripsi Fitur:** Katalog tempat pembeli (mahasiswa/pekerja) bisa ngeliat, nyari, dan milih paket surplus food dari resto/cafe yang lagi diskon gede (50-70%) pas mau tutup toko, lengkap dengan ulasan dari pembeli yang udah ngambil pesanannya.
 
 **Models:**
 - Review
   * user : ForeignKey(User), consumer yang memberi ulasan
   * order : OneToOneField(OrderSystem), pesanan berstatus `completed` yang diulas (1 pesanan = 1 ulasan)
-  * product : ForeignKey(MerchantProduct), produk Mystery Box yang diulas
+  * product : ForeignKey(MerchantProduct), produk yang diulas
   * rating : PositiveSmallIntegerField, nilai 1-5
   * comment : TextField, isi ulasan
   * created_at : DateTimeField, waktu ulasan dibuat
@@ -51,7 +51,7 @@ SisaBijak adalah platform marketplace food rescue berbasis Django yang menghubun
 - review_form.html : halaman edit ulasan
 
 **Data Awal:**
-- `python manage.py seed_catalog` : mengisi 50 produk Mystery Box beserta akun merchant-nya dari `catalog/data/paket_dummy.json`
+- `python manage.py seed_catalog` : mengisi 50 produk beserta akun merchant-nya dari `catalog/data/paket_dummy.json`
 
 **Integrasi Antar Modul:**
 - Merchant Product : membaca `product_name`, `real_price`, `discount_rate` / `discount_price`, `product_stock`, `product_status`, `start_pickup`, `end_pickup`, `merchant_name`, dan `pickup_address`
@@ -200,7 +200,7 @@ Interactive Gamified Analytics Dashboard & Eco-Impact Tracker untuk memvisualisa
 - `Admin`
 
 # Pembagian Job Desk
--`Mystery Box Marketplace & Catalog` : Debora Putri Dion Simamora
+-`Marketplace & Catalog` : Debora Putri Dion Simamora
 -`Merchant Inventory & Pickup Manager` : Jefry Acmal Dzikhrullah
 -`Order Validation & Claim System` : Rafael Darius Sagala
 -`Carbon & Food Rescue Impact Analytics` : Khalisha Nalani Chandra

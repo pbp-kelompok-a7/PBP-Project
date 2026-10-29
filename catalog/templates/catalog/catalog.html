@@ -23,7 +23,7 @@
 
   <!-- judul -->
   <h1 class="text-3xl md:text-5xl font-bold">
-    Discover <span class="text-[#6F8BA0]">Mystery Boxes</span>
+    Rescue <span class="text-[#6F8BA0]">Today's Food</span> 
   </h1>
   <p class="mt-3 text-gray-600 md:text-lg">
     Rescue surplus food from local bakeries &amp; cafes at 50-70% off before closing time.
@@ -40,7 +40,7 @@
 
   <!-- info jumlah paket -->
   <p class="mt-8 text-xl font-semibold">
-    <span id="jumlah-paket">{{ jumlah }}</span> mystery boxes available
+    <span id="jumlah-paket">{{ jumlah }}</span> boxes ready to rescue
   </p>
 
   <!-- grid kartu paket (awal dirender django, abis filter diganti sama JS) -->
@@ -66,7 +66,7 @@
       </div>
     </a>
     {% empty %}
-    <p class="col-span-full text-gray-500">No mystery boxes available right now.</p>
+    <p class="col-span-full text-gray-500">No boxes ready to rescue right now.</p>
     {% endfor %}
   </div>
 </main>
@@ -134,7 +134,7 @@
     history.replaceState(null, "", url);
 
     if (hasil.data.length === 0) {
-      grid.innerHTML = `<p class="col-span-full text-gray-500">No mystery boxes match your search.</p>`;
+      grid.innerHTML = `<p class="col-span-full text-gray-500">No boxes match your search.</p>`;
     } else {
       grid.innerHTML = hasil.data.map(bikinKartu).join("");
     }

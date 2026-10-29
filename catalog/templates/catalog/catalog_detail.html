@@ -63,10 +63,10 @@
       {% if tersedia and bisa_klaim %}
         {% if user.is_authenticated %}
           <!-- tombol klaim nyambung ke halaman checkout punya darius -->
-          <a href="{% url 'main:checkout_product' produk.product_id %}" class="block text-center bg-black text-white font-semibold rounded-full py-4">Claim Mystery Box</a>
+          <a href="{% url 'main:checkout_product' produk.product_id %}" class="block text-center bg-black text-white font-semibold rounded-full py-4">Add to Cart</a>
         {% else %}
-          <a href="{% url 'main:login' %}" class="block text-center bg-black text-white font-semibold rounded-full py-4">Claim Mystery Box</a>
-          <p class="text-sm text-gray-500">You need to log in as Consumer to claim this box.</p>
+          <a href="{% url 'main:login' %}" class="block text-center bg-black text-white font-semibold rounded-full py-4">Add to Cart</a>
+          <p class="text-sm text-gray-500">You need to log in as Consumer to add this box to your cart.</p>
         {% endif %}
       {% elif tersedia %}
         <!-- jam pickup udah lewat, checkout darius juga nolak, jadi tombolnya dimatiin -->
