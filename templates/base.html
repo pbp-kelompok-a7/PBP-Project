@@ -98,11 +98,26 @@
                 {% if user.is_authenticated %}
                     {% if user.is_staff or user.is_superuser %}
                         {# ====== ADMIN / SUPERUSER NAVBAR ====== #}
+                        <a href="{% url 'main:simulator_bayar' %}" class="flex items-center justify-center w-9 h-9 rounded-full hover:bg-sb-light-gray transition-colors text-sb-dark" title="Simulator Pembayaran" aria-label="Simulator Pembayaran"{% if request.resolver_match.url_name == 'simulator_bayar' %} aria-current="page"{% endif %}>
+                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="5" y="4" width="14" height="17" rx="2" ry="2"/>
+                                <line x1="9" y1="9" x2="15" y2="9"/>
+                                <line x1="9" y1="13" x2="15" y2="13"/>
+                                <line x1="9" y1="17" x2="13" y2="17"/>
+                                <path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/>
+                            </svg>
+                        </a>
                         <a
                             href="{% url 'admin:index' %}"
-                            class="flex items-center gap-2 px-4 py-2 border border-sb-dark rounded-full text-sm font-semibold text-sb-dark hover:bg-sb-dark hover:text-white transition-colors"
+                            class="flex items-center gap-2 px-3 py-1.5 border border-sb-dark rounded-full text-sm font-semibold text-sb-dark hover:bg-sb-dark hover:text-white transition-colors"
+                            title="Panel Admin"
                         >
-                            Admin · {{ user.get_full_name|default:user.username }}
+                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="12" cy="12" r="10"/>
+                                <circle cx="12" cy="10" r="3"/>
+                                <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/>
+                            </svg>
+                            {{ user.get_full_name|default:user.username }}
                         </a>
                         <a
                             href="{% url 'main:logout' %}"
