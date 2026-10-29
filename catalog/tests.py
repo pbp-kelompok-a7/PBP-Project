@@ -1,11 +1,15 @@
 from datetime import timedelta
 from decimal import Decimal
+import shutil
+import tempfile
 from io import StringIO
+from pathlib import Path
+from unittest import mock
 
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -393,7 +397,34 @@ class ReviewTest(TestCase):
         self.assertEqual(response.status_code, 405)
 
 
+# foto hasil seed disimpen di folder sementara, biar folder media asli ga kotor
+MEDIA_TES = tempfile.mkdtemp()
+
+
+@override_settings(MEDIA_ROOT=MEDIA_TES)
 class SeedCatalogTest(TestCase):
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(MEDIA_TES, ignore_errors=True)
+
+    def test_seed_pasang_foto_kalau_filenya_ada(self):
+        # bikin folder foto palsu yang isinya cuma 1 foto
+        folder = Path(tempfile.mkdtemp())
+        (folder / "croissant-box.jpg").write_bytes(b"foto palsu")
+        with mock.patch("catalog.management.commands.seed_catalog.FOTO_DIR", folder):
+            call_command("seed_catalog", stdout=StringIO())
+            croissant = MerchantProduct.objects.get(product_name="Croissant Box")
+            nama_foto = croissant.product_photo.name
+            self.assertTrue(nama_foto.startswith("products/croissant-box"))
+            # produk yang fotonya ga ada tetep ke-seed tanpa foto
+            self.assertFalse(MerchantProduct.objects.get(product_name="Mochi Box").product_photo)
+            # seed lagi ga bikin foto dobel
+            call_command("seed_catalog", stdout=StringIO())
+            croissant.refresh_from_db()
+            self.assertEqual(croissant.product_photo.name, nama_foto)
+        shutil.rmtree(folder, ignore_errors=True)
 
     def test_seed_bikin_50_produk(self):
         call_command("seed_catalog", stdout=StringIO())
