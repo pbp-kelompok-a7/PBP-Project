@@ -1,52 +1,278 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}{{ page_title }} — SisaBijak{% endblock title %}
+{% block title %}{% if product %}Edit Your Product{% else %}Add Your Product{% endif %} — SisaBijak{% endblock title %}
 
 {% block content %}
-<main class="product-page">
-    <div class="product-heading">
-        <div>
-            <p class="eyebrow">Merchant Product</p>
-            <h1>{{ page_title }}</h1>
-            <p>Lengkapi informasi produk dan waktu pengambilan.</p>
-        </div>
-        <a class="btn btn-outline" href="{% url 'main:product_view' %}">Kembali ke Dashboard</a>
+<main class="w-full max-w-[1140px] mx-auto px-4 py-8 font-inter">
+
+    <!-- Page Title & Subtitle -->
+    <div class="mb-6">
+        <h1 class="text-3xl md:text-4xl font-bold text-sb-dark tracking-tight mb-2">
+            {% if product %}Edit Your Product{% else %}Add Your Product{% endif %}
+        </h1>
+        <p class="text-sb-muted text-sm md:text-base">
+            {% if product %}
+                Edit your product details, set pricing and discounts, and define the pickup schedule.
+            {% else %}
+                Enter your product details, set pricing and discounts, and define the pickup schedule.
+            {% endif %}
+        </p>
     </div>
 
-    <form method="post" class="product-form" novalidate>
-        {% csrf_token %}
-        {% for field in form %}
-            <div class="form-field">
-                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
-                {% if field.name == 'discount_rate' %}
-                    <p class="calculated-price">Harga setelah diskon: <strong id="discount-price-preview">—</strong></p>
-                {% endif %}
-                {% if field.help_text %}<small class="field-help">{{ field.help_text }}</small>{% endif %}
-                {% for error in field.errors %}<p class="form-error">{{ error }}</p>{% endfor %}
+    <!-- Alert Messages -->
+    {% if form.errors %}
+        <div class="mb-6 p-4 rounded-xl bg-red-50 border border-sb-red text-sb-red text-sm">
+            <p class="font-semibold mb-1">Mohon periksa kesalahan input berikut:</p>
+            <ul class="list-disc list-inside space-y-0.5">
+                {% for field in form %}
+                    {% for error in field.errors %}
+                        <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+                {% for error in form.non_field_errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <!-- Card Form Container -->
+    <div class="bg-sb-warm-gray border border-sb-gray rounded-2xl p-6 md:p-8 shadow-sm">
+        <form method="post" enctype="multipart/form-data" novalidate id="product-form">
+            {% csrf_token %}
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- Left Column: Form Fields -->
+                <div class="space-y-5">
+                    <!-- Product Name -->
+                    <div>
+                        <label for="{{ form.product_name.id_for_label }}" class="block text-sm font-semibold text-sb-dark mb-1.5">
+                            Product Name
+                        </label>
+                        <input
+                            type="text"
+                            name="{{ form.product_name.name }}"
+                            id="{{ form.product_name.id_for_label }}"
+                            value="{{ form.product_name.value|default:'' }}"
+                            placeholder="Fill your product name here"
+                            required
+                            class="w-full bg-sb-light-gray border border-sb-gray rounded-xl px-4 py-3 text-sm text-sb-dark placeholder-sb-muted focus:outline-none focus:border-sb-green focus:bg-white transition-all"
+                        >
+                    </div>
+
+                    <!-- Status & Stock (2-col) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Status -->
+                        <div>
+                            <label for="{{ form.product_status.id_for_label }}" class="block text-sm font-semibold text-sb-dark mb-1.5">
+                                Status
+                            </label>
+                            <select
+                                name="{{ form.product_status.name }}"
+                                id="{{ form.product_status.id_for_label }}"
+                                class="w-full bg-sb-light-gray border border-sb-gray rounded-xl px-4 py-3 text-sm text-sb-dark focus:outline-none focus:border-sb-green focus:bg-white transition-all cursor-pointer"
+                            >
+                                {% for val, label in form.product_status.field.choices %}
+                                    <option value="{{ val }}" {% if form.product_status.value == val %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Stock -->
+                        <div>
+                            <label for="{{ form.product_stock.id_for_label }}" class="block text-sm font-semibold text-sb-dark mb-1.5">
+                                Stock
+                            </label>
+                            <input
+                                type="number"
+                                name="{{ form.product_stock.name }}"
+                                id="{{ form.product_stock.id_for_label }}"
+                                value="{{ form.product_stock.value|default:'' }}"
+                                placeholder="ex: 10"
+                                min="0"
+                                required
+                                class="w-full bg-sb-light-gray border border-sb-gray rounded-xl px-4 py-3 text-sm text-sb-dark placeholder-sb-muted focus:outline-none focus:border-sb-green focus:bg-white transition-all"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Price & Discount (2-col) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Price -->
+                        <div>
+                            <label for="{{ form.real_price.id_for_label }}" class="block text-sm font-semibold text-sb-dark mb-1.5">
+                                Price
+                            </label>
+                            <div class="flex rounded-xl shadow-sm">
+                                <span class="inline-flex items-center px-3.5 rounded-l-xl border border-r-0 border-sb-gray bg-sb-light-gray text-sb-dark text-sm font-semibold">
+                                    Rp.
+                                </span>
+                                <input
+                                    type="number"
+                                    step="100"
+                                    name="{{ form.real_price.name }}"
+                                    id="{{ form.real_price.id_for_label }}"
+                                    value="{{ form.real_price.value|default:'' }}"
+                                    placeholder="ex: 15.000"
+                                    required
+                                    class="w-full min-w-0 bg-sb-light-gray border border-sb-gray rounded-r-xl px-3.5 py-3 text-sm text-sb-dark placeholder-sb-muted focus:outline-none focus:border-sb-green focus:bg-white transition-all"
+                                >
+                            </div>
+                        </div>
+
+                        <!-- Discount -->
+                        <div>
+                            <label for="{{ form.discount_rate.id_for_label }}" class="block text-sm font-semibold text-sb-dark mb-1.5">
+                                Discount
+                            </label>
+                            <div class="flex rounded-xl shadow-sm">
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    max="100"
+                                    name="{{ form.discount_rate.name }}"
+                                    id="{{ form.discount_rate.id_for_label }}"
+                                    value="{{ form.discount_rate.value|default:'' }}"
+                                    placeholder="ex: 50"
+                                    required
+                                    class="w-full min-w-0 bg-sb-light-gray border border-sb-gray rounded-l-xl px-3.5 py-3 text-sm text-sb-dark placeholder-sb-muted focus:outline-none focus:border-sb-green focus:bg-white transition-all"
+                                >
+                                <span class="inline-flex items-center px-3.5 rounded-r-xl border border-l-0 border-sb-gray bg-sb-light-gray text-sb-dark text-sm font-semibold">
+                                    %
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Calculated preview -->
+                    <div class="text-xs text-sb-green font-medium pt-0.5">
+                        Harga setelah diskon: <strong id="discount-price-preview" class="text-sm font-bold text-sb-green">—</strong>
+                    </div>
+
+                    <!-- Start Pickup & End Pickup (2-col) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Start Pickup -->
+                        <div>
+                            <label for="{{ form.start_pickup.id_for_label }}" class="block text-sm font-semibold text-sb-dark mb-1.5">
+                                Start Pickup
+                            </label>
+                            <input
+                                type="datetime-local"
+                                name="{{ form.start_pickup.name }}"
+                                id="{{ form.start_pickup.id_for_label }}"
+                                value="{{ form.start_pickup.value|date:'Y-m-d\TH:i'|default:form.start_pickup.value|default:'' }}"
+                                required
+                                class="w-full bg-sb-light-gray border border-sb-gray rounded-xl px-3.5 py-3 text-sm text-sb-dark placeholder-sb-muted focus:outline-none focus:border-sb-green focus:bg-white transition-all"
+                            >
+                        </div>
+
+                        <!-- End Pickup -->
+                        <div>
+                            <label for="{{ form.end_pickup.id_for_label }}" class="block text-sm font-semibold text-sb-dark mb-1.5">
+                                End Pickup
+                            </label>
+                            <input
+                                type="datetime-local"
+                                name="{{ form.end_pickup.name }}"
+                                id="{{ form.end_pickup.id_for_label }}"
+                                value="{{ form.end_pickup.value|date:'Y-m-d\TH:i'|default:form.end_pickup.value|default:'' }}"
+                                required
+                                class="w-full bg-sb-light-gray border border-sb-gray rounded-xl px-3.5 py-3 text-sm text-sb-dark placeholder-sb-muted focus:outline-none focus:border-sb-green focus:bg-white transition-all"
+                            >
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Photo Upload Placeholder -->
+                <div class="flex flex-col">
+                    <label class="block text-sm font-semibold text-sb-dark mb-1.5">
+                        Photo
+                    </label>
+                    <label for="product-photo-input" class="relative flex-1 min-h-[320px] bg-sb-light-gray/70 hover:bg-sb-light-gray border border-sb-gray rounded-2xl flex flex-col items-center justify-center p-6 text-center cursor-pointer transition-colors group overflow-hidden">
+                        <input type="file" id="product-photo-input" name="product_photo" accept="image/png, image/jpeg, image/jpg" class="hidden">
+                        <div id="photo-placeholder" class="{% if product and product.photo_url %}hidden {% endif %}flex flex-col items-center justify-center space-y-3">
+                            <div class="w-14 h-14 rounded-full bg-white border border-sb-gray flex items-center justify-center text-sb-muted group-hover:text-sb-green group-hover:scale-105 transition-all">
+                                <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                                    <polyline points="21 15 16 10 5 21"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-sb-muted group-hover:text-sb-dark">
+                                    Upload your product picture here
+                                </p>
+                                <p class="text-xs text-sb-muted mt-1">
+                                    (format: .jpg, .jpeg, .png)
+                                </p>
+                            </div>
+                        </div>
+                        <img id="photo-preview" src="{% if product and product.photo_url %}{{ product.photo_url }}{% endif %}" class="{% if not product or not product.photo_url %}hidden {% endif %}max-h-[300px] w-auto object-contain rounded-xl shadow-sm" alt="Preview Foto Produk">
+                        <span id="photo-change-hint" class="{% if not product or not product.photo_url %}hidden {% endif %}absolute bottom-3 bg-black/60 text-white text-xs px-3 py-1 rounded-full backdrop-blur-sm group-hover:bg-black/80 transition-all">
+                            Klik untuk ganti foto
+                        </span>
+                    </label>
+                </div>
             </div>
-        {% endfor %}
-        {% for error in form.non_field_errors %}<p class="form-error">{{ error }}</p>{% endfor %}
-        <button class="btn btn-dark" type="submit">Simpan Produk</button>
-    </form>
+
+            <!-- Actions: Cancel & Save -->
+            <div class="flex items-center justify-end gap-3 pt-4 border-t border-sb-gray/40">
+                <a href="{% url 'main:product_view' %}" class="px-8 py-2.5 bg-white border border-sb-dark text-sb-dark font-semibold text-sm rounded-xl hover:bg-sb-light-gray transition-colors">
+                    Cancel
+                </a>
+                <button type="submit" class="px-8 py-2.5 bg-sb-green hover:bg-[#2c472c] text-white font-semibold text-sm rounded-xl transition-colors shadow-sm">
+                    Save
+                </button>
+            </div>
+        </form>
+    </div>
 </main>
+
 <script>
     (() => {
-        const realPrice = document.getElementById('id_real_price');
-        const discountRate = document.getElementById('id_discount_rate');
+        const realPrice = document.getElementById('{{ form.real_price.id_for_label }}');
+        const discountRate = document.getElementById('{{ form.discount_rate.id_for_label }}');
         const preview = document.getElementById('discount-price-preview');
+
         const updatePreview = () => {
             const price = Number.parseFloat(realPrice.value);
             const rate = Number.parseFloat(discountRate.value);
             if (Number.isFinite(price) && Number.isFinite(rate) && rate >= 0 && rate <= 100) {
-                preview.textContent = `Rp${(price * (1 - rate / 100)).toLocaleString('id-ID', { maximumFractionDigits: 2 })}`;
+                const finalPrice = price * (1 - rate / 100);
+                preview.textContent = `Rp. ${Math.round(finalPrice).toLocaleString('id-ID')}`;
             } else {
                 preview.textContent = '—';
             }
         };
-        realPrice.addEventListener('input', updatePreview);
-        discountRate.addEventListener('input', updatePreview);
-        updatePreview();
+
+        if (realPrice && discountRate && preview) {
+            realPrice.addEventListener('input', updatePreview);
+            discountRate.addEventListener('input', updatePreview);
+            updatePreview();
+        }
+
+        // Photo preview handling
+        const photoInput = document.getElementById('product-photo-input');
+        const photoPreview = document.getElementById('photo-preview');
+        const photoPlaceholder = document.getElementById('photo-placeholder');
+        const photoChangeHint = document.getElementById('photo-change-hint');
+        if (photoInput) {
+            photoInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                        photoPreview.src = evt.target.result;
+                        photoPreview.classList.remove('hidden');
+                        photoPlaceholder.classList.add('hidden');
+                        if (photoChangeHint) photoChangeHint.classList.remove('hidden');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
     })();
 </script>
 {% endblock content %}

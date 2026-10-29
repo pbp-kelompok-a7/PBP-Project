@@ -1,46 +1,256 @@
-{% extends 'OrderSystem.html' %}
-{% load order_extras %}
+{% extends 'base.html' %}
+{% load order_extras static %}
 
-{% block order_content %}
-<a class="back-link" href="{% url 'main:merchant_orders' %}">← Kembali ke Pesanan Masuk</a>
-<section class="page-heading">
-    <span class="eyebrow">Kasir Merchant</span>
-    <h1>Validasi QR Klaim</h1>
-    <p>Masukkan kode dari QR klaim milik konsumen.</p>
-</section>
+{% block title %}Validasi QR Klaim — SisaBijak{% endblock title %}
 
-<div class="validation-layout">
-    <form method="post" class="panel claim-search-card">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="search">
-        <label for="claim-code-input">Kode klaim</label>
-        <input class="order-text-input" id="claim-code-input" name="claim_qr_code" value="{{ claim_code }}" placeholder="SBQR-XXXXXXXX" autocomplete="off" required>
-        <button class="primary-button" type="submit">Periksa Kode</button>
-    </form>
+{% block content %}
+<main class="w-full max-w-[1140px] mx-auto px-4 py-8 font-inter">
 
-    <section class="panel claim-validation-result">
-        {% if order %}
-            <header class="detail-header"><div><h2>Detail Klaim {{ order.product.merchant_name }}</h2><strong>Kode {{ order.claim_qr_code }}</strong></div>{% if claim_ready %}<span class="status-badge status-paid">Siap diklaim</span>{% else %}<span class="status-badge status-{{ order.payment_status|order_status_class }}">{{ order.get_payment_status_display }}</span>{% endif %}</header>
-            <dl class="detail-list">
-                <div><dt>Pembeli</dt><dd>{{ order.consumer.get_full_name|default:order.consumer.username }}</dd></div>
-                {% for item in claim_orders %}
-                    <div><dt>{{ item.product.nama_produk }} × {{ item.quantity }}<br><small>{{ item.get_payment_status_display }}</small></dt><dd>{{ item.total_price|rupiah }}<br><small>Batas {{ item.pickup_deadline|date:'d M Y, H:i' }}</small></dd></div>
-                {% endfor %}
-                <div><dt>Total yang dapat diklaim</dt><dd><strong>{{ claim_total|rupiah }}</strong></dd></div>
-            </dl>
-            {% if claim_ready %}
-                <form method="post">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="confirm">
-                    <input type="hidden" name="claim_qr_code" value="{{ order.claim_qr_code }}">
-                    <button class="primary-button" type="submit">Konfirmasi Penyerahan Pesanan</button>
-                </form>
-            {% else %}
-                <p class="inline-notice">Kode ini tidak dapat digunakan lagi.</p>
-            {% endif %}
-        {% else %}
-            <div class="empty-state compact-empty"><h2>Menunggu kode klaim</h2><p>Detail pembeli dan pesanan akan muncul setelah kode valid ditemukan.</p></div>
-        {% endif %}
-    </section>
-</div>
-{% endblock order_content %}
+    <!-- Greeting Header -->
+    <div class="mb-6">
+        <h1 class="text-3xl md:text-4xl font-bold text-sb-dark tracking-tight">
+            Hello, {{ user.get_full_name|default:user.username }}
+        </h1>
+    </div>
+
+    <!-- Subnav Tabs & Action Buttons -->
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <!-- Subnav Tabs -->
+        <div class="flex items-center gap-3">
+            <a href="{% url 'main:product_view' %}" class="px-6 py-2 rounded-full font-semibold text-sm transition-all bg-white border-2 border-sb-dark text-sb-dark hover:bg-sb-light-gray">
+                Products
+            </a>
+            <a href="{% url 'main:merchant_orders' %}" class="px-6 py-2 rounded-full font-semibold text-sm transition-all bg-sb-mint border-2 border-sb-green text-sb-dark shadow-sm">
+                Orders
+            </a>
+            <a href="{% url 'main:merchant_orders' %}?tab=history" class="px-6 py-2 rounded-full font-semibold text-sm transition-all bg-white border-2 border-sb-dark text-sb-dark hover:bg-sb-light-gray">
+                History
+            </a>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center gap-3">
+            <button type="button" onclick="document.getElementById('qr-image-upload').click()" class="px-5 py-2.5 rounded-xl bg-sb-green hover:bg-[#2c472c] text-white font-semibold text-sm transition-colors shadow-sm ring-2 ring-offset-2 ring-sb-green cursor-pointer inline-flex items-center gap-2 select-none" title="Upload QR Claim langsung">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7"/>
+                    <rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/>
+                    <rect x="3" y="14" width="7" height="7"/>
+                </svg>
+                <span>Scan QR Claim</span>
+            </button>
+            <a href="{% url 'main:product_create' %}" class="px-5 py-2.5 rounded-xl bg-sb-green hover:bg-[#2c472c] text-white font-semibold text-sm transition-colors shadow-sm">
+                + Add Product
+            </a>
+        </div>
+    </div>
+
+    <!-- Alert Messages -->
+    {% if messages %}
+        <div class="mb-6 space-y-2">
+            {% for message in messages %}
+                <div class="p-4 rounded-xl text-sm font-medium {% if message.tags == 'success' %}bg-sb-mint text-sb-green border border-sb-green{% elif message.tags == 'error' %}bg-red-50 text-sb-red border border-sb-red{% else %}bg-sb-light-gray text-sb-dark border border-sb-gray{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Outer Card Container -->
+    <div class="bg-sb-warm-gray border border-sb-gray rounded-2xl p-6 shadow-sm">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+            <!-- Left Column: Upload Claim QR -->
+            <div class="lg:col-span-6 flex flex-col">
+                <label class="block text-sm font-bold text-sb-dark mb-2">
+                    Upload Claim QR
+                </label>
+                <label for="qr-image-upload" class="flex-1 min-h-[380px] bg-sb-light-gray/60 hover:bg-sb-light-gray border border-sb-gray rounded-2xl flex flex-col items-center justify-center p-6 text-center cursor-pointer transition-colors group relative">
+                    <input type="file" id="qr-image-upload" accept="image/*" class="hidden">
+                    
+                    <div id="qr-upload-placeholder" class="flex flex-col items-center justify-center space-y-3">
+                        <div class="w-16 h-16 rounded-full bg-white border border-sb-gray flex items-center justify-center text-sb-muted group-hover:text-sb-green group-hover:scale-105 transition-all shadow-sm">
+                            <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="7" height="7"/>
+                                <rect x="14" y="3" width="7" height="7"/>
+                                <rect x="14" y="14" width="7" height="7"/>
+                                <rect x="3" y="14" width="7" height="7"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-sb-dark">
+                                Upload consumer QR Claim here
+                            </p>
+                            <p class="text-xs text-sb-muted mt-1">
+                                (format: .jpg, .jpeg, .png)
+                            </p>
+                        </div>
+                    </div>
+
+                    <img id="qr-preview" class="hidden max-h-[300px] w-auto object-contain rounded-xl shadow-sm" alt="Preview QR Claim">
+                </label>
+            </div>
+
+            <!-- Right Column: Input Claim Code & Order Details -->
+            <div class="lg:col-span-6 space-y-5">
+                <!-- Input Claim Code Form -->
+                <div>
+                    <label for="claim-code-input" class="block text-sm font-bold text-sb-dark mb-2">
+                        Input Claim Code
+                    </label>
+                    <form method="post" class="flex items-center gap-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="search">
+                        <input
+                            type="text"
+                            id="claim-code-input"
+                            name="claim_qr_code"
+                            value="{{ claim_code }}"
+                            placeholder="SBQR-XXXXXXXX"
+                            autocomplete="off"
+                            required
+                            class="flex-1 bg-sb-light-gray border border-sb-gray rounded-xl px-4 py-3 text-sm text-sb-dark font-mono uppercase placeholder-sb-muted focus:outline-none focus:border-sb-green focus:bg-white transition-all"
+                        >
+                        <button
+                            type="submit"
+                            class="px-6 py-3 bg-sb-green hover:bg-[#2c472c] text-white font-semibold text-sm rounded-xl transition-colors shadow-sm whitespace-nowrap"
+                        >
+                            Submit
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Order Details Box -->
+                <div class="rounded-xl border border-sb-gray overflow-hidden shadow-sm">
+                    <!-- Sage Green Header -->
+                    <div class="bg-sb-sage text-sb-dark font-bold text-sm px-5 py-3.5 border-b border-sb-gray">
+                        Order Details: {{ order.claim_qr_code|default:'SBQR-XXXXXXXX' }}
+                    </div>
+
+                    <!-- Details Body -->
+                    <div class="bg-white p-5 space-y-3.5 text-sm">
+                        {% if order %}
+                            <div class="flex items-start justify-between">
+                                <span class="text-sb-muted font-medium">Buyers</span>
+                                <span class="font-semibold text-sb-dark text-right">
+                                    {{ order.consumer.get_full_name|default:order.consumer.username }}
+                                </span>
+                            </div>
+
+                            <div class="flex items-start justify-between">
+                                <span class="text-sb-muted font-medium">Item</span>
+                                <span class="font-semibold text-sb-dark text-right">
+                                    {{ order.product.nama_produk|default:order.product.product_name }}
+                                </span>
+                            </div>
+
+                            <div class="flex items-start justify-between">
+                                <span class="text-sb-muted font-medium">Quantity</span>
+                                <span class="font-semibold text-sb-dark text-right">
+                                    {{ order.quantity }}
+                                </span>
+                            </div>
+
+                            <div class="flex items-start justify-between">
+                                <span class="text-sb-muted font-medium">Total Price</span>
+                                <span class="font-bold text-sb-dark text-right">
+                                    {{ claim_total|rupiah }}
+                                </span>
+                            </div>
+
+                            <!-- Claim Action Button -->
+                            <div class="pt-4 border-t border-sb-gray/40 flex justify-end">
+                                {% if claim_ready %}
+                                    <form method="post" class="m-0">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="confirm">
+                                        <input type="hidden" name="claim_qr_code" value="{{ order.claim_qr_code }}">
+                                        <button
+                                            type="submit"
+                                            class="px-8 py-2.5 bg-sb-green hover:bg-[#2c472c] text-white font-semibold text-sm rounded-xl transition-colors shadow-sm"
+                                        >
+                                            Claim
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <span class="inline-flex items-center px-4 py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-600">
+                                        Pesanan sudah diselesaikan atau tidak dapat diklaim lagi
+                                    </span>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <div class="py-10 text-center text-sb-muted">
+                                <p class="text-sm">Silakan masukkan kode klaim di atas atau upload file QR untuk menampilkan detail pesanan pembeli.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</main>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script>
+    (() => {
+        const uploadInput = document.getElementById('qr-image-upload');
+        const preview = document.getElementById('qr-preview');
+        const placeholder = document.getElementById('qr-upload-placeholder');
+        const codeInput = document.getElementById('claim-code-input');
+        const searchForm = codeInput ? codeInput.closest('form') : null;
+
+        if (uploadInput) {
+            uploadInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    const dataUrl = evt.target.result;
+                    if (preview && placeholder) {
+                        preview.src = dataUrl;
+                        preview.classList.remove('hidden');
+                        placeholder.classList.add('hidden');
+                    }
+
+                    // Scan QR using jsQR
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0, img.width, img.height);
+                        const imageData = ctx.getImageData(0, 0, img.width, img.height);
+                        if (window.jsQR) {
+                            const code = jsQR(imageData.data, imageData.width, imageData.height);
+                            if (code && code.data) {
+                                let val = code.data.trim();
+                                if (val.startsWith('SISABIJAK-PAY:')) {
+                                    val = val.replace('SISABIJAK-PAY:', '');
+                                }
+                                if (codeInput) {
+                                    codeInput.value = val;
+                                    if (searchForm) searchForm.submit();
+                                }
+                                return;
+                            }
+                        }
+
+                        // Fallback check on file name
+                        const match = file.name.match(/SBQR-[A-Za-z0-9]+/i);
+                        if (match && codeInput) {
+                            codeInput.value = match[0].toUpperCase();
+                            if (searchForm) searchForm.submit();
+                        }
+                    };
+                    img.src = dataUrl;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+    })();
+</script>
+{% endblock content %}
