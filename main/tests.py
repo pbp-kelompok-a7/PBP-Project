@@ -5,7 +5,10 @@ from io import BytesIO
 from tempfile import TemporaryDirectory
 
 import qrcode
-from qrcode.image.pure import PyPNGImage
+try:
+    from qrcode.image.pure import PyPNGImage
+except ImportError:
+    PyPNGImage = None
 
 from django.contrib.auth.models import User
 from django.core import signing
@@ -477,9 +480,15 @@ class OrderSystemFlowTests(TestCase):
     def test_simulator_rejects_fake_images_unsigned_qr_and_direct_confirmation(self):
         order = self.create_order()
         blank = BytesIO()
-        qrcode.make("QR lain", image_factory=PyPNGImage).save(blank)
+        try:
+            qrcode.make("QR lain", image_factory=PyPNGImage).save(blank)
+        except (ImportError, Exception):
+            qrcode.make("QR lain").save(blank, format="PNG")
         unsigned = BytesIO()
-        qrcode.make("SISABIJAK-PAY:" + order.payment_qr_id, image_factory=PyPNGImage).save(unsigned)
+        try:
+            qrcode.make("SISABIJAK-PAY:" + order.payment_qr_id, image_factory=PyPNGImage).save(unsigned)
+        except (ImportError, Exception):
+            qrcode.make("SISABIJAK-PAY:" + order.payment_qr_id).save(unsigned, format="PNG")
         self.client.force_login(self.admin)
         for content in (b"not-a-picture", blank.getvalue(), unsigned.getvalue()):
             response = self.client.post(reverse("main:simulator_bayar"), {

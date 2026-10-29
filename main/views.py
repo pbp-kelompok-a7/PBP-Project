@@ -6,7 +6,10 @@ from decimal import Decimal
 from io import BytesIO
 
 import qrcode
-from qrcode.image.pure import PyPNGImage
+try:
+    from qrcode.image.pure import PyPNGImage
+except ImportError:
+    PyPNGImage = None
 
 from django.contrib import messages
 from django.contrib.auth import login, logout, update_session_auth_hash
@@ -282,7 +285,14 @@ def _store_claim_orders(order, lock=False):
 
 def _claim_qr_image(code):
     image = BytesIO()
-    qrcode.make(code, image_factory=PyPNGImage).save(image)
+    try:
+        if PyPNGImage is not None:
+            qrcode.make(code, image_factory=PyPNGImage).save(image)
+        else:
+            raise ImportError
+    except (ImportError, Exception):
+        img = qrcode.make(code)
+        img.save(image, format="PNG")
     return "data:image/png;base64," + base64.b64encode(image.getvalue()).decode()
 
 
@@ -309,7 +319,14 @@ def _payment_context(orders):
 def _payment_png(token):
     """Create the downloadable QR with its signed payload in a PNG text chunk."""
     image = BytesIO()
-    qrcode.make(PAYMENT_QR_PREFIX + token, image_factory=PyPNGImage).save(image)
+    try:
+        if PyPNGImage is not None:
+            qrcode.make(PAYMENT_QR_PREFIX + token, image_factory=PyPNGImage).save(image)
+        else:
+            raise ImportError
+    except (ImportError, Exception):
+        img = qrcode.make(PAYMENT_QR_PREFIX + token)
+        img.save(image, format="PNG")
     png_data = image.getvalue()
     chunk_type = b"tEXt"
     chunk_data = PAYMENT_PNG_MARKER + token.encode("ascii")
