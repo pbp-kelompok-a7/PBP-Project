@@ -260,5 +260,5 @@ Modul ini berfungsi sebagai gerbang utama platform SisaBijak. Halaman ini menyaj
 - `Web Design Coordinator` : Khalisha Nalani Chandra
 
 # Tautan
-- Web Deployment: [SisaBijak Websites](https://jefry-acmal-sisabijak.pws.cs.ui.ac.id/)
-- Design Figma: [SisaBijak Web Design](https://www.figma.com/design/o4NTbzF4o4lhz0H3YpwtPu/TK-PBP?node-id=9-3&t=KAoCwHMU8z00eGQP-1)
+- Web Deployment: [SisaBijak Website](https://jefry-acmal-sisabijak.pws.cs.ui.ac.id/)
+- Web Design: [SisaBijak Website Design](https://www.figma.com/design/o4NTbzF4o4lhz0H3YpwtPu/TK-PBP?node-id=9-3&t=KAoCwHMU8z00eGQP-1)

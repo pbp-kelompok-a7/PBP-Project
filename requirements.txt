@@ -4,3 +4,5 @@ psycopg2-binary
 python-dotenv
 whitenoise
 qrcode[png]>=8.2,<9
+cloudinary
+django-cloudinary-storage
