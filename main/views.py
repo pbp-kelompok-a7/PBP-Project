@@ -783,25 +783,4 @@ def edit_profile_view(request):
 @login_required(login_url="main:login")
 @never_cache
 def order_history_view(request):
-    user_profile = UserProfile.objects.filter(user=request.user).first()
-    if not user_profile or user_profile.role != UserProfile.Role.CONSUMER:
-        messages.error(request, "Halaman ini khusus konsumen.")
-        return redirect("main:show_main")
-
-    orders = OrderSystem.objects.filter(
-        consumer=request.user
-    ).select_related("product").order_by("-created_at")
-
-    selected_status = request.GET.get("status", "")
-    valid_statuses = {
-        value for value, label in OrderSystem.PaymentStatus.choices
-    }
-    if selected_status in valid_statuses:
-        orders = orders.filter(payment_status=selected_status)
-
-    return render(request, "order_history_view.html", {
-        "orders": orders,
-        "selected_status": selected_status,
-        "status_choices": OrderSystem.PaymentStatus.choices,
-    })
-
+    return redirect("main:order_list")
