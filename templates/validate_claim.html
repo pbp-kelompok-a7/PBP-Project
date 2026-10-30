@@ -227,10 +227,7 @@
                         if (window.jsQR) {
                             const code = jsQR(imageData.data, imageData.width, imageData.height);
                             if (code && code.data) {
-                                let val = code.data.trim();
-                                if (val.startsWith('SISABIJAK-PAY:')) {
-                                    val = val.replace('SISABIJAK-PAY:', '');
-                                }
+                                const val = code.data.trim();
                                 if (codeInput) {
                                     codeInput.value = val;
                                     if (searchForm) searchForm.submit();
@@ -239,12 +236,7 @@
                             }
                         }
 
-                        // Fallback check on file name
-                        const match = file.name.match(/SBQR-[A-Za-z0-9]+/i);
-                        if (match && codeInput) {
-                            codeInput.value = match[0].toUpperCase();
-                            if (searchForm) searchForm.submit();
-                        }
+                        window.alert('QR klaim tidak terbaca. Gunakan gambar yang jelas atau ketik kode klaim konsumen.');
                     };
                     img.src = dataUrl;
                 };

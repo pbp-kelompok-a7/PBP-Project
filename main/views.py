@@ -702,6 +702,11 @@ def merchant_order_list_view(request):
 @never_cache
 @require_http_methods(["GET", "POST"])
 def validate_claim_view(request):
+    is_ajax = (
+        request.headers.get("x-requested-with") == "XMLHttpRequest"
+        or request.GET.get("format") == "json"
+        or "application/json" in request.headers.get("accept", "")
+    )
     order = None
     claim_orders = []
     code = request.GET.get("code", "").strip().upper()
@@ -730,7 +735,11 @@ def validate_claim_view(request):
                     expired = _expire_locked_order(item) or expired
             order = next(item for item in claim_orders if item.pk == order.pk)
             if expired:
-                messages.error(request, "Sebagian produk melewati batas pengambilan.")
+                if not is_ajax:
+                    messages.error(request, "Sebagian produk melewati batas pengambilan.")
+
+    if is_ajax and order is None:
+        return JsonResponse({"success": False, "error": "Masukkan kode klaim pesanan merchant ini."})
 
     if action == "confirm" and order is not None:
         with transaction.atomic():
@@ -742,6 +751,8 @@ def validate_claim_view(request):
                 if item.payment_status == OrderSystem.PaymentStatus.PAID
             ]
             if not ready_orders:
+                if is_ajax:
+                    return JsonResponse({"success": False, "error": "Kode ini sudah digunakan, belum dibayar, atau melewati batas pengambilan."})
                 messages.error(request, "Kode ini sudah digunakan atau belum dibayar.")
                 return redirect("main:validate_claim")
 
@@ -755,6 +766,12 @@ def validate_claim_view(request):
             wallet.balance = F("balance") + total
             wallet.save(update_fields=("balance", "updated_at"))
 
+        if is_ajax:
+            return JsonResponse({
+                "success": True,
+                "message": "QR valid. Pesanan selesai dan saldo merchant diperbarui.",
+                "total": str(total),
+            })
         messages.success(
             request,
             "QR valid. Pesanan selesai dan saldo merchant diperbarui.",
@@ -767,6 +784,24 @@ def validate_claim_view(request):
         item for item in claim_orders
         if item.payment_status == OrderSystem.PaymentStatus.PAID
     ]
+    if is_ajax:
+        total = sum((item.total_price for item in ready_orders), Decimal("0"))
+        return JsonResponse({
+            "success": True,
+            "claim_code": order.claim_qr_code,
+            "buyer_name": order.consumer.get_full_name() or order.consumer.username,
+            "item_name": ", ".join(f"{item.product.product_name} ({item.quantity})" for item in ready_orders),
+            "quantity": sum(item.quantity for item in ready_orders),
+            "items": [{
+                "order_id": item.pk,
+                "product_name": item.product.product_name,
+                "quantity": item.quantity,
+                "total_price": str(item.total_price),
+            } for item in ready_orders],
+            "total_price": str(total),
+            "total_price_formatted": _rupiah(total),
+            "can_claim": bool(ready_orders),
+        })
     context = {
         "screen": "validate",
         "screen_config": _screen("Validasi QR Klaim", "merchant"),

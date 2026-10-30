@@ -355,12 +355,6 @@
                             }
                         }
 
-                        // Fallback from filename
-                        if (!detectedCode) {
-                            const match = file.name.match(/SBQR-[A-Za-z0-9]+/i);
-                            if (match) detectedCode = match[0];
-                        }
-
                         if (!detectedCode) {
                             statusTitle.textContent = 'GAGAL MEMINDAI';
                             statusDesc.textContent = 'QR Code tidak terdeteksi';
@@ -370,7 +364,7 @@
                             return;
                         }
 
-                        detectedCode = detectedCode.replace('SISABIJAK-PAY:', '').trim().toUpperCase();
+                        detectedCode = detectedCode.trim().toUpperCase();
                         activeClaimCode = detectedCode;
 
                         statusTitle.textContent = 'MEMVERIFIKASI';

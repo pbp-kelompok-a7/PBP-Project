@@ -163,7 +163,7 @@
                     <div class="rounded-xl border border-sb-gray overflow-hidden shadow-sm">
                         <!-- Header with sage green background -->
                         <div class="bg-sb-sage text-sb-dark font-bold text-sm px-5 py-3.5 border-b border-sb-gray">
-                            Order Details: {{ selected_order.claim_qr_code|default:selected_order.order_number|default:'—' }}
+                            Order Details: {% if selected_order %}{{ selected_order.claim_qr_code|default:selected_order.order_number }}{% else %}—{% endif %}
                         </div>
 
                         <!-- Body -->
@@ -441,21 +441,6 @@
     </div>
 </main>
 
-<!-- Valid Orders Data for instantaneous client-side claim code generation -->
-<script id="valid-orders-data" type="application/json">
-{
-    {% for ord in incoming_orders %}
-        "{{ ord.claim_qr_code|upper }}": {
-            "code": "{{ ord.claim_qr_code }}",
-            "buyer": "{{ ord.consumer.get_full_name|default:ord.consumer.username|escapejs }}",
-            "item": "{{ ord.product.nama_produk|default:ord.product.product_name|escapejs }}",
-            "quantity": {{ ord.quantity }},
-            "total": "{{ ord.total_price|rupiah|escapejs }}"
-        }{% if not forloop.last %},{% endif %}
-    {% endfor %}
-}
-</script>
-
 <!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
@@ -478,17 +463,6 @@
             });
         }
 
-        // Parse valid orders
-        let validOrders = {};
-        const dataScript = document.getElementById('valid-orders-data');
-        if (dataScript) {
-            try {
-                validOrders = JSON.parse(dataScript.textContent);
-            } catch (err) {
-                console.error("Failed to parse valid orders data", err);
-            }
-        }
-
         // UI elements for Orders tab
         const codeInput = document.getElementById('claim-code-input-orders');
         const searchForm = document.getElementById('search-code-form');
@@ -502,29 +476,37 @@
         const detailTotal = document.getElementById('detail-total');
         const confirmClaimCode = document.getElementById('confirm-claim-code');
 
-        function generateOrderDetails(code) {
+        let lookupSequence = 0;
+        async function generateOrderDetails(code) {
+            const sequence = ++lookupSequence;
             const cleanCode = (code || '').trim().toUpperCase();
-            if (!cleanCode) {
-                hideOrderDetails();
-                return;
-            }
+            hideOrderDetails();
+            if (errorMessage) errorMessage.classList.add('hidden');
+            if (!cleanCode) return;
 
-            const order = validOrders[cleanCode];
-            if (order) {
-                if (errorMessage) errorMessage.classList.add('hidden');
-                if (detailsHeader) detailsHeader.textContent = `Order Details: ${order.code}`;
-                if (detailBuyer) detailBuyer.textContent = order.buyer;
-                if (detailItem) detailItem.textContent = order.item;
+            try {
+                const response = await fetch(`{% url 'main:validate_claim' %}?code=${encodeURIComponent(cleanCode)}&format=json`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    cache: 'no-store',
+                });
+                const order = await response.json();
+                if (sequence !== lookupSequence) return;
+                if (!order.success || !order.can_claim) {
+                    throw new Error(order.error || 'Pesanan sudah diklaim, belum dibayar, atau melewati batas pengambilan.');
+                }
+                if (detailsHeader) detailsHeader.textContent = `Order Details: ${order.claim_code}`;
+                if (detailBuyer) detailBuyer.textContent = order.buyer_name;
+                if (detailItem) detailItem.textContent = order.item_name;
                 if (detailQuantity) detailQuantity.textContent = order.quantity;
-                if (detailTotal) detailTotal.textContent = order.total;
-                if (confirmClaimCode) confirmClaimCode.value = order.code;
+                if (detailTotal) detailTotal.textContent = order.total_price_formatted;
+                if (confirmClaimCode) confirmClaimCode.value = order.claim_code;
 
                 if (placeholder) placeholder.classList.add('hidden');
                 if (content) content.classList.remove('hidden');
-            } else {
-                hideOrderDetails();
+            } catch (error) {
+                if (sequence !== lookupSequence) return;
                 if (errorMessage) {
-                    errorMessage.textContent = `Kode klaim "${cleanCode}" tidak ditemukan untuk pesanan masuk merchant ini.`;
+                    errorMessage.textContent = error.message || 'Gagal memeriksa pesanan. Silakan coba lagi.';
                     errorMessage.classList.remove('hidden');
                 }
             }
@@ -575,23 +557,11 @@
                         if (window.jsQR) {
                             const qr = jsQR(imageData.data, imageData.width, imageData.height);
                             if (qr && qr.data) {
-                                let val = qr.data.trim();
-                                if (val.startsWith('SISABIJAK-PAY:')) {
-                                    val = val.replace('SISABIJAK-PAY:', '');
-                                }
+                                const val = qr.data.trim();
                                 if (codeInput) codeInput.value = val;
                                 generateOrderDetails(val);
                                 return;
                             }
-                        }
-
-                        // Fallback check on file name
-                        const match = file.name.match(/SBQR-[A-Za-z0-9]+/i);
-                        if (match && codeInput) {
-                            const val = match[0].toUpperCase();
-                            codeInput.value = val;
-                            generateOrderDetails(val);
-                            return;
                         }
 
                         if (errorMessage) {
@@ -699,12 +669,6 @@
                             }
                         }
 
-                        // Fallback check on file name
-                        if (!detectedCode) {
-                            const match = file.name.match(/SBQR-[A-Za-z0-9]+/i);
-                            if (match) detectedCode = match[0];
-                        }
-
                         if (!detectedCode) {
                             if (ordersStatusTitle) ordersStatusTitle.textContent = 'GAGAL MEMINDAI';
                             if (ordersStatusDesc) ordersStatusDesc.textContent = 'QR Code tidak terdeteksi';
@@ -716,7 +680,7 @@
                             return;
                         }
 
-                        detectedCode = detectedCode.replace('SISABIJAK-PAY:', '').trim().toUpperCase();
+                        detectedCode = detectedCode.trim().toUpperCase();
                         activeHeaderClaimCode = detectedCode;
 
                         if (ordersStatusTitle) ordersStatusTitle.textContent = 'MEMVERIFIKASI';
