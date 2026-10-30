@@ -1,6 +1,4 @@
 # SisaBijak 
-
-# Deskripsi
 SisaBijak adalah platform marketplace food rescue berbasis Django yang menghubungkan toko roti dan cafe lokal dengan mahasiswa atau pekerja yang lagi nyari makanan berkualitas dengan harga miring.
 
 # Anggota Kelompok
