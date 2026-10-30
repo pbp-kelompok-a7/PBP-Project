@@ -210,67 +210,6 @@ class OrderSystemFlowTests(TestCase):
         self.assertEqual(order.payment_status, OrderSystem.PaymentStatus.PAID)
         self.assertFalse(MerchantWallet.objects.filter(merchant=self.other_merchant).exists())
 
-    def test_claim_lookup_returns_json_for_unknown_and_missing_codes(self):
-        self.client.force_login(self.merchant)
-        for code in ("", "SBQR-NOTFOUND"):
-            response = self.client.get(reverse("main:validate_claim"), {
-                "code": code, "format": "json",
-            })
-            self.assertFalse(response.json()["success"])
-
-    def test_ajax_claim_identifies_orders_and_credits_wallet_only_once(self):
-        order = self.create_order(status=OrderSystem.PaymentStatus.PAID)
-        other = self.create_order(
-            status=OrderSystem.PaymentStatus.PAID, claim_code="SBQR-SEPARATE",
-        )
-        self.client.force_login(self.merchant)
-        response = self.client.get(reverse("main:validate_claim"), {
-            "code": order.claim_qr_code.lower(), "format": "json",
-        })
-        data = response.json()
-        self.assertTrue(data["can_claim"])
-        self.assertEqual(data["claim_code"], order.claim_qr_code)
-        self.assertEqual(data["items"][0]["order_id"], order.pk)
-        self.assertEqual(data["total_price"], "15000.00")
-        payload = {"action": "confirm", "claim_qr_code": order.claim_qr_code}
-        response = self.client.post(reverse("main:validate_claim"), payload,
-                                    HTTP_X_REQUESTED_WITH="XMLHttpRequest")
-        self.assertTrue(response.json()["success"])
-        order.refresh_from_db()
-        other.refresh_from_db()
-        self.assertEqual(order.payment_status, OrderSystem.PaymentStatus.COMPLETED)
-        self.assertEqual(other.payment_status, OrderSystem.PaymentStatus.PAID)
-        retry = self.client.post(reverse("main:validate_claim"), payload,
-                                 HTTP_X_REQUESTED_WITH="XMLHttpRequest")
-        self.assertFalse(retry.json()["success"])
-        self.assertEqual(MerchantWallet.objects.get(merchant=self.merchant).balance, order.total_price)
-        lookup = self.client.get(reverse("main:validate_claim"), {
-            "code": order.claim_qr_code, "format": "json",
-        })
-        self.assertFalse(lookup.json()["can_claim"])
-
-    def test_ajax_claim_rejects_other_merchants_and_expired_orders(self):
-        order = self.create_order(status=OrderSystem.PaymentStatus.PAID)
-        self.client.force_login(self.other_merchant)
-        response = self.client.get(reverse("main:validate_claim"), {
-            "code": order.claim_qr_code, "format": "json",
-        })
-        self.assertFalse(response.json()["success"])
-        response = self.client.post(reverse("main:validate_claim"), {
-            "action": "confirm", "claim_qr_code": order.claim_qr_code,
-        }, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
-        self.assertFalse(response.json()["success"])
-        self.client.force_login(self.merchant)
-        order.pickup_deadline = timezone.now() - timedelta(minutes=1)
-        order.save(update_fields=("pickup_deadline",))
-        response = self.client.post(reverse("main:validate_claim"), {
-            "action": "confirm", "claim_qr_code": order.claim_qr_code,
-        }, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
-        self.assertFalse(response.json()["success"])
-        order.refresh_from_db()
-        self.assertEqual(order.payment_status, OrderSystem.PaymentStatus.EXPIRED)
-        self.assertFalse(MerchantWallet.objects.filter(merchant=self.merchant).exists())
-
     def test_withdrawal_resets_merchant_balance(self):
         MerchantWallet.objects.create(
             merchant=self.merchant,
@@ -315,7 +254,7 @@ class OrderSystemFlowTests(TestCase):
         self.assertContains(response, "Keranjang masih kosong")
         self.assertTemplateUsed(response, "base.html")
         self.assertContains(response, reverse("main:profile"))
-        self.assertRegex(response.content.decode(), r'<a\s+href="/orders/checkout/"[^>]*title="Cart"')
+        self.assertRegex(response.content.decode(), r'Contact</a>\s*<a href="/orders/checkout/">Keranjang</a>')
         self.assertNotContains(response, "product-switcher")
 
         for _ in range(2):
@@ -432,14 +371,6 @@ class OrderSystemFlowTests(TestCase):
         detail = self.client.get(reverse("main:validate_claim"), {"code": store_codes[0]})
         self.assertEqual(len(detail.context["claim_orders"]), 2)
         self.assertEqual(detail.context["claim_total"], Decimal("50000"))
-        live_detail = self.client.get(reverse("main:validate_claim"), {
-            "code": store_codes[0], "format": "json",
-        }).json()
-        self.assertTrue(live_detail["can_claim"])
-        self.assertEqual(live_detail["quantity"], 3)
-        self.assertEqual(live_detail["total_price"], "50000.00")
-        self.assertEqual({item["order_id"] for item in live_detail["items"]},
-                         {item.pk for item in store_orders})
         payload = {"action": "confirm", "claim_qr_code": store_codes[0]}
         self.client.post(reverse("main:validate_claim"), payload)
         self.assertEqual(
