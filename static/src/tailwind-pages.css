@@ -1,0 +1,46 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) important source(none);
+
+@source "../../templates/consumer_dashboard_view.html";
+@source "../../templates/edit_profile_view.html";
+@source "../../templates/profile.html";
+@source "../../templates/order_history_view.html";
+@source "../../templates/login.html";
+@source "../../templates/register.html";
+@source inline("status-{pending,paid,completed,expired}");
+
+@theme {
+    --font-sans: "Inter", sans-serif;
+}
+
+@utility scrollbar-gutter-stable {
+    scrollbar-gutter: stable;
+}
+
+@utility order-status-badge {
+    display: inline-block;
+    padding: 5px 8px;
+    border: 1px solid #d5e0d2;
+    border-radius: 20px;
+    background: #e7efe4;
+    color: #344a32;
+    font-size: 10px;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+@utility status-pending {
+    --order-status-state: pending;
+}
+
+@utility status-paid {
+    --order-status-state: paid;
+}
+
+@utility status-completed {
+    --order-status-state: completed;
+}
+
+@utility status-expired {
+    --order-status-state: expired;
+}

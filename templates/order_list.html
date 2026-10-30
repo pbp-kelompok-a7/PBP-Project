@@ -23,7 +23,7 @@
             <div class="consumer-order-content">
                 <div class="consumer-order-details">
                     <article class="ordered-product">
-                        <div class="product-photo compact" aria-hidden="true"><span>Foto Paket</span></div>
+                        <div class="product-photo compact" aria-hidden="true" style="overflow:hidden;">{% if order.product.photo_url %}<img src="{{ order.product.photo_url }}" alt="{{ order.product.nama_produk }}" style="width:100%;height:100%;object-fit:cover;">{% else %}<span>Foto Paket</span>{% endif %}</div>
                         <div class="product-copy">
                             <span class="muted product-merchant">{{ order.product.merchant_name }}</span>
                             <h2>{{ order.product.nama_produk }}</h2>
@@ -38,13 +38,15 @@
                         <a class="primary-button order-action-button" href="{% url 'main:payment_detail' order.pk %}">Lanjutkan Pembayaran</a>
                     {% endif %}
                 </div>
-                {% if order.payment_status == 'paid' %}
+                {% if order.show_store_claim %}
                     <aside class="claim-card">
-                        <h2>QR Klaim</h2>
-                        <p>Tunjukkan QR ini kepada staf toko.</p>
-                        <div class="qr-frame qr-frame-claim"><canvas class="qr-canvas" width="188" height="188" data-qr-seed="{{ order.claim_qr_code }}"></canvas></div>
-                        <button class="claim-code" type="button" data-copy="{{ order.claim_qr_code }}"><span>Kode klaim</span><strong>{{ order.claim_qr_code }}</strong></button>
+                        <h2>QR Klaim {{ order.product.merchant_name }}</h2>
+                        <p>Satu QR untuk {{ order.store_claim_items|length }} produk toko ini dalam checkout yang sama.</p>
+                        <div class="qr-frame qr-frame-claim"><img class="qr-canvas" src="{{ order.store_claim_image }}" alt="QR klaim toko {{ order.product.merchant_name }}"></div>
+                        <button class="claim-code" type="button" data-copy="{{ order.store_claim_code }}"><span>Kode klaim toko</span><strong>{{ order.store_claim_code }}</strong></button>
                     </aside>
+                {% elif order.payment_status == 'paid' %}
+                    <p class="inline-notice">Gunakan QR klaim {{ order.product.merchant_name }} yang tampil pada pesanan lain di checkout ini.</p>
                 {% endif %}
             </div>
         </article>

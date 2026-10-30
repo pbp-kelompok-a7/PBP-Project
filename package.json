@@ -1,0 +1,12 @@
+{
+  "name": "sisabijak-tailwind-pages",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i ./static/src/tailwind-pages.css -o ./static/css/tailwind-pages.css --minify",
+    "watch:css": "tailwindcss -i ./static/src/tailwind-pages.css -o ./static/css/tailwind-pages.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.3",
+    "tailwindcss": "4.3.3"
+  }
+}

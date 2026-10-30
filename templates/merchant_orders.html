@@ -1,64 +1,793 @@
-{% extends 'OrderSystem.html' %}
-{% load order_extras %}
+{% extends 'base.html' %}
+{% load order_extras static %}
 
-{% block order_content %}
-<div class="merchant-heading-row">
-    <section class="page-heading merchant-heading">
-        <span class="eyebrow">Dashboard Merchant</span>
-        <h1>{% if merchant_tab == 'history' %}Riwayat Redeem{% else %}Pesanan Masuk{% endif %}</h1>
-        <p>Kelola pesanan dan validasi QR saat pengambilan.</p>
-    </section>
-    <div class="revenue-card">
-        <span aria-hidden="true">◎</span>
-        <p><span>Saldo Tersedia</span><strong>{{ wallet.balance|rupiah }}</strong></p>
-        <form method="post" action="{% url 'main:withdraw_funds' %}">
-            {% csrf_token %}
-            <button type="submit"{% if wallet.balance <= 0 %} disabled{% endif %}>Cairkan</button>
-        </form>
+{% block title %}{% if merchant_tab == 'history' %}Riwayat Redeem{% else %}Orders &amp; Validasi QR{% endif %} — SisaBijak{% endblock title %}
+
+{% block content %}
+<main class="w-full max-w-[1140px] mx-auto px-4 py-8 font-inter">
+
+    <!-- Greeting Header -->
+    <div class="mb-6">
+        <h1 class="text-3xl md:text-4xl font-bold text-sb-dark tracking-tight">
+            Hello, {{ user.get_full_name|default:user.username }}
+        </h1>
     </div>
-</div>
 
-<div class="merchant-layout">
-    <section class="panel merchant-order-list">
-        <header class="panel-header"><h2>Daftar Pesanan</h2><a href="{% url 'main:validate_claim' %}">Input kode klaim</a></header>
-        <div class="merchant-orders">
-            {% for order in displayed_orders %}
-                <a class="merchant-order-row{% if selected_order.pk == order.pk %} selected{% endif %}" href="{% url 'main:merchant_orders' %}?tab={{ merchant_tab }}&amp;selected={{ order.pk }}">
-                    <span class="order-id"><strong>{{ order.order_number }}</strong><small>{{ order.created_at|date:'d M Y, H:i' }}</small></span>
-                    <span class="order-customer"><strong>{{ order.consumer.get_full_name|default:order.consumer.username }}</strong><small>{{ order.product.nama_produk }} ({{ order.quantity }})</small></span>
-                    <span class="order-row-status"><em class="status-badge status-{{ order.payment_status|order_status_class }}">{{ order.get_payment_status_display }}</em><strong>{{ order.total_price|rupiah }}</strong></span><span>›</span>
-                </a>
-            {% empty %}
-                <div class="empty-list">{% if merchant_tab == 'history' %}Belum ada pesanan selesai ditukar.{% else %}Tidak ada pesanan yang siap diklaim.{% endif %}</div>
+    <!-- Subnav Tabs & Action Buttons -->
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <!-- Subnav Tabs -->
+        <div class="flex items-center gap-3">
+            <a href="{% url 'main:product_view' %}" class="px-6 py-2 rounded-full font-semibold text-sm transition-all bg-white border-2 border-sb-dark text-sb-dark hover:bg-sb-light-gray">
+                Products
+            </a>
+            <a href="{% url 'main:merchant_orders' %}" class="px-6 py-2 rounded-full font-semibold text-sm transition-all {% if merchant_tab != 'history' %}bg-sb-mint border-2 border-sb-green text-sb-dark shadow-sm{% else %}bg-white border-2 border-sb-dark text-sb-dark hover:bg-sb-light-gray{% endif %}">
+                Orders
+            </a>
+            <a href="{% url 'main:merchant_orders' %}?tab=history" class="px-6 py-2 rounded-full font-semibold text-sm transition-all {% if merchant_tab == 'history' %}bg-sb-mint border-2 border-sb-green text-sb-dark shadow-sm{% else %}bg-white border-2 border-sb-dark text-sb-dark hover:bg-sb-light-gray{% endif %}">
+                History
+            </a>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center gap-3">
+            <label for="header-qr-upload" class="px-5 py-2.5 rounded-xl bg-sb-green hover:bg-[#2c472c] text-white font-semibold text-sm transition-colors shadow-sm cursor-pointer inline-flex items-center gap-2 select-none" title="Upload QR Claim langsung">
+                <!-- QR Code Icon -->
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7"/>
+                    <rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/>
+                    <rect x="3" y="14" width="7" height="7"/>
+                </svg>
+                <span>Scan QR Claim</span>
+                <input type="file" id="header-qr-upload" accept="image/*" class="hidden">
+            </label>
+            <a href="{% url 'main:product_create' %}" class="px-5 py-2.5 rounded-xl bg-sb-green hover:bg-[#2c472c] text-white font-semibold text-sm transition-colors shadow-sm">
+                + Add Product
+            </a>
+        </div>
+    </div>
+
+    <!-- Alert Messages -->
+    {% if messages %}
+        <div class="mb-6 space-y-2">
+            {% for message in messages %}
+                <div class="p-4 rounded-xl text-sm font-medium {% if message.tags == 'success' %}bg-sb-mint text-sb-green border border-sb-green{% elif message.tags == 'error' %}bg-red-50 text-sb-red border border-sb-red{% else %}bg-sb-light-gray text-sb-dark border border-sb-gray{% endif %}">
+                    {{ message }}
+                </div>
             {% endfor %}
         </div>
-    </section>
+    {% endif %}
 
-    <section class="panel merchant-order-detail">
-        {% if selected_order %}
-            <header class="detail-header"><div><h2>Detail Pesanan</h2><strong>{{ selected_order.order_number }}</strong></div><span class="status-badge status-{{ selected_order.payment_status|order_status_class }}">{{ selected_order.get_payment_status_display }}</span></header>
-            <dl class="detail-list">
-                <div><dt>Nama Pembeli</dt><dd>{{ selected_order.consumer.get_full_name|default:selected_order.consumer.username }}</dd></div>
-                <div><dt>Item</dt><dd>{{ selected_order.product.nama_produk }}</dd></div>
-                <div><dt>Jumlah</dt><dd>{{ selected_order.quantity }}</dd></div>
-                <div><dt>Total Pembayaran</dt><dd>{{ selected_order.total_price|rupiah }}</dd></div>
-                <div><dt>Batas Pengambilan</dt><dd>{{ selected_order.pickup_deadline|date:'d M Y, H:i' }}</dd></div>
-            </dl>
-            <div class="validation-area">
-                <h3>Validasi QR Klaim</h3>
-                {% if selected_order.payment_status == 'paid' %}
-                    <a class="scanner" href="{% url 'main:validate_claim' %}?code={{ selected_order.claim_qr_code }}">
-                        <canvas class="qr-canvas" width="88" height="88" data-qr-seed="{{ selected_order.claim_qr_code }}"></canvas>
-                    </a>
-                    <p>Klik QR untuk memvalidasi klaim pembeli.</p>
-                {% else %}
-                    <p class="inline-notice">Pesanan ini sudah {{ selected_order.get_payment_status_display|lower }}.</p>
-                {% endif %}
+    <!-- Outer Card Container -->
+    <div class="bg-sb-warm-gray border border-sb-gray rounded-2xl p-6 shadow-sm">
+        {% if merchant_tab == 'history' %}
+            {# ==================== VIEW HISTORY (IMAGE 4) ==================== #}
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+                <!-- Left Column: Orders History List & Search -->
+                <div class="lg:col-span-7">
+                    <h2 class="text-base font-bold text-sb-dark mb-3">
+                        Orders History
+                    </h2>
+
+                    <!-- Search Bar -->
+                    <div class="flex items-center bg-sb-green rounded-xl px-4 py-2.5 gap-2.5 mb-4 shadow-sm">
+                        <svg class="w-4 h-4 text-sb-gray flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="7"/>
+                            <path d="m20 20-3.5-3.5"/>
+                        </svg>
+                        <input
+                            type="text"
+                            id="orders-search-input"
+                            placeholder="Search orders history here"
+                            class="w-full bg-transparent border-0 text-white placeholder-sb-gray text-sm font-medium focus:outline-none"
+                        >
+                    </div>
+
+                    <!-- Orders Items Stack -->
+                    <div class="space-y-3 max-h-[520px] overflow-y-auto pr-1" id="orders-list-container">
+                        {% for order in displayed_orders %}
+                            <a
+                                href="{% url 'main:merchant_orders' %}?tab=history&selected={{ order.pk }}"
+                                class="order-list-item block p-4 rounded-xl transition-all cursor-pointer {% if selected_order.pk == order.pk %}border-2 border-sb-green bg-sb-mint/60 shadow-sm{% else %}border border-sb-gray bg-white hover:bg-sb-light-gray/60{% endif %}"
+                                data-search="{{ order.product.nama_produk|default:order.product.product_name|lower }} {{ order.consumer.username|lower }} {{ order.consumer.get_full_name|lower }} {{ order.order_number|lower }} {{ order.claim_qr_code|lower }}"
+                            >
+                                <div class="flex items-center justify-between gap-3">
+                                    <!-- Product & Code -->
+                                    <div class="min-w-0 flex-1">
+                                        <strong class="text-sm font-bold text-sb-dark block truncate">
+                                            {{ order.product.nama_produk|default:order.product.product_name }}
+                                            <span class="font-normal text-xs text-sb-muted">({{ order.quantity }})</span>
+                                        </strong>
+                                        <span class="text-xs text-sb-muted font-mono block truncate">
+                                            {{ order.claim_qr_code|default:order.order_number }}
+                                        </span>
+                                    </div>
+
+                                    <!-- Consumer & Date -->
+                                    <div class="text-left md:text-center min-w-0 flex-1">
+                                        <span class="text-sm font-semibold text-sb-dark block truncate">
+                                            {{ order.consumer.get_full_name|default:order.consumer.username }}
+                                        </span>
+                                        <span class="text-xs text-sb-muted block truncate">
+                                            {{ order.updated_at|date:'d M Y, H.i' }}
+                                        </span>
+                                    </div>
+
+                                    <!-- Price & Status -->
+                                    <div class="text-right flex items-center gap-3 flex-shrink-0">
+                                        <div>
+                                            <strong class="text-sm font-bold text-sb-dark block">
+                                                {{ order.total_price|rupiah }}
+                                            </strong>
+                                            <span class="text-xs text-sb-muted block">
+                                                Status: Success
+                                            </span>
+                                        </div>
+                                        <span class="text-sb-muted font-bold text-lg select-none">›</span>
+                                    </div>
+                                </div>
+                            </a>
+                        {% empty %}
+                            <div class="p-8 text-center bg-white rounded-xl border border-sb-gray text-sb-muted text-sm">
+                                Belum ada riwayat pesanan yang telah diklaim.
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Right Column: Balance & Order Details -->
+                <div class="lg:col-span-5 space-y-5">
+                    <!-- My Balance Card -->
+                    <div>
+                        <label class="block text-sm font-bold text-sb-dark mb-1.5">
+                            My Balance:
+                        </label>
+                        <div class="bg-sb-light-gray border border-sb-gray rounded-xl px-4 py-3 flex items-center justify-between shadow-sm">
+                            <span class="text-base font-bold text-sb-dark">
+                                {{ wallet.balance|rupiah }}
+                            </span>
+                            <form method="post" action="{% url 'main:withdraw_funds' %}" class="m-0">
+                                {% csrf_token %}
+                                <button
+                                    type="submit"
+                                    {% if wallet.balance <= 0 %}disabled class="opacity-50 cursor-not-allowed bg-sb-gray text-sb-muted px-4 py-1.5 rounded-lg text-xs font-semibold"{% else %}class="bg-sb-green hover:bg-[#2c472c] text-white px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow-sm"{% endif %}
+                                >
+                                    Cairkan
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Order Details Box -->
+                    <div class="rounded-xl border border-sb-gray overflow-hidden shadow-sm">
+                        <!-- Header with sage green background -->
+                        <div class="bg-sb-sage text-sb-dark font-bold text-sm px-5 py-3.5 border-b border-sb-gray">
+                            Order Details: {% if selected_order %}{{ selected_order.claim_qr_code|default:selected_order.order_number }}{% else %}—{% endif %}
+                        </div>
+
+                        <!-- Body -->
+                        <div class="bg-white p-5 space-y-3.5 text-sm">
+                            {% if selected_order %}
+                                <div class="flex items-start justify-between">
+                                    <span class="text-sb-muted font-medium">Buyers</span>
+                                    <span class="font-semibold text-sb-dark text-right">
+                                        {{ selected_order.consumer.get_full_name|default:selected_order.consumer.username }}
+                                    </span>
+                                </div>
+
+                                <div class="flex items-start justify-between">
+                                    <span class="text-sb-muted font-medium">Item</span>
+                                    <span class="font-semibold text-sb-dark text-right">
+                                        {{ selected_order.product.nama_produk|default:selected_order.product.product_name }}
+                                    </span>
+                                </div>
+
+                                <div class="flex items-start justify-between">
+                                    <span class="text-sb-muted font-medium">Quantity</span>
+                                    <span class="font-semibold text-sb-dark text-right">
+                                        {{ selected_order.quantity }}
+                                    </span>
+                                </div>
+
+                                <div class="flex items-start justify-between">
+                                    <span class="text-sb-muted font-medium">Total Price</span>
+                                    <span class="font-bold text-sb-dark text-right">
+                                        {{ selected_order.total_price|rupiah }}
+                                    </span>
+                                </div>
+
+                                <div class="flex items-start justify-between">
+                                    <span class="text-sb-muted font-medium">Claim Date</span>
+                                    <span class="font-semibold text-sb-dark text-right">
+                                        {{ selected_order.updated_at|date:'d F Y, H.i' }}
+                                    </span>
+                                </div>
+                            {% else %}
+                                <div class="py-8 text-center text-sb-muted">
+                                    <p>Pilih pesanan dari daftar riwayat di sebelah kiri untuk melihat rincian.</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
             </div>
-        {% else %}
-            <div class="empty-state compact-empty"><h2>Belum ada pesanan</h2><p>Pesanan yang sudah dibayar akan muncul di sini.</p></div>
-        {% endif %}
-    </section>
-</div>
-{% endblock order_content %}
 
+        {% else %}
+            {# ==================== VIEW ORDERS / VALIDATE CLAIM (IMAGE 5) ==================== #}
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+                <!-- Left Column: Upload Claim QR -->
+                <div class="lg:col-span-6 flex flex-col">
+                    <label class="block text-sm font-bold text-sb-dark mb-2">
+                        Upload Claim QR
+                    </label>
+                    <label for="qr-image-upload-orders" class="flex-1 min-h-[380px] bg-sb-light-gray/60 hover:bg-sb-light-gray border border-sb-gray rounded-2xl flex flex-col items-center justify-center p-6 text-center cursor-pointer transition-colors group relative">
+                        <input type="file" id="qr-image-upload-orders" accept="image/*" class="hidden">
+                        
+                        <div id="qr-upload-placeholder-orders" class="flex flex-col items-center justify-center space-y-3">
+                            <div class="w-16 h-16 rounded-full bg-white border border-sb-gray flex items-center justify-center text-sb-muted group-hover:text-sb-green group-hover:scale-105 transition-all shadow-sm">
+                                <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="7" height="7"/>
+                                    <rect x="14" y="3" width="7" height="7"/>
+                                    <rect x="14" y="14" width="7" height="7"/>
+                                    <rect x="3" y="14" width="7" height="7"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-sb-dark">
+                                    Upload consumer QR Claim here
+                                </p>
+                                <p class="text-xs text-sb-muted mt-1">
+                                    (format: .jpg, .jpeg, .png)
+                                </p>
+                            </div>
+                        </div>
+
+                        <img id="qr-preview-orders" class="hidden max-h-[300px] w-auto object-contain rounded-xl shadow-sm" alt="Preview QR Claim">
+                    </label>
+                </div>
+
+                <!-- Right Column: Input Claim Code & Order Details -->
+                <div class="lg:col-span-6 space-y-5">
+                    <!-- Input Claim Code Form -->
+                    <div>
+                        <label for="claim-code-input-orders" class="block text-sm font-bold text-sb-dark mb-2">
+                            Input Claim Code
+                        </label>
+                        <form method="post" action="{% url 'main:validate_claim' %}" class="flex items-center gap-2" id="search-code-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="search">
+                            <input
+                                type="text"
+                                id="claim-code-input-orders"
+                                name="claim_qr_code"
+                                value=""
+                                placeholder="SBQR-XXXXXXXX"
+                                autocomplete="off"
+                                required
+                                class="flex-1 bg-sb-light-gray border border-sb-gray rounded-xl px-4 py-3 text-sm text-sb-dark font-mono uppercase placeholder-sb-muted focus:outline-none focus:border-sb-green focus:bg-white transition-all"
+                            >
+                            <button
+                                type="submit"
+                                class="px-6 py-3 bg-sb-green hover:bg-[#2c472c] text-white font-semibold text-sm rounded-xl transition-colors shadow-sm whitespace-nowrap"
+                            >
+                                Submit
+                            </button>
+                        </form>
+                        <p id="claim-error-message" class="hidden text-xs text-sb-red font-semibold mt-2"></p>
+                    </div>
+
+                    <!-- Order Details Box -->
+                    <div class="rounded-xl border border-sb-gray overflow-hidden shadow-sm">
+                        <!-- Sage Green Header -->
+                        <div id="order-details-header" class="bg-sb-sage text-sb-dark font-bold text-sm px-5 py-3.5 border-b border-sb-gray">
+                            Order Details: SBQR-XXXXXXXX
+                        </div>
+
+                        <!-- Details Body -->
+                        <div class="bg-white p-5 text-sm">
+                            <!-- Empty / Placeholder State (Default) -->
+                            <div id="order-details-placeholder" class="py-10 text-center text-sb-muted">
+                                <div class="w-12 h-12 rounded-full bg-sb-light-gray flex items-center justify-center mx-auto mb-3 text-sb-muted">
+                                    <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="3" width="7" height="7"/>
+                                        <rect x="14" y="3" width="7" height="7"/>
+                                        <rect x="14" y="14" width="7" height="7"/>
+                                        <rect x="3" y="14" width="7" height="7"/>
+                                    </svg>
+                                </div>
+                                <p class="text-sm font-medium text-sb-dark mb-1">Belum ada pesanan yang dipilih</p>
+                                <p class="text-xs text-sb-muted max-w-xs mx-auto">
+                                    Silakan masukkan kode klaim yang valid atau upload QR Claim konsumen untuk memuat informasi produk terkait.
+                                </p>
+                            </div>
+
+                            <!-- Generated Content (Hidden by default, shown when valid code/QR provided) -->
+                            <div id="order-details-content" class="hidden space-y-3.5">
+                                <div class="flex items-start justify-between">
+                                    <span class="text-sb-muted font-medium">Buyers</span>
+                                    <span id="detail-buyer" class="font-semibold text-sb-dark text-right">—</span>
+                                </div>
+
+                                <div class="flex items-start justify-between">
+                                    <span class="text-sb-muted font-medium">Item</span>
+                                    <span id="detail-item" class="font-semibold text-sb-dark text-right">—</span>
+                                </div>
+
+                                <div class="flex items-start justify-between">
+                                    <span class="text-sb-muted font-medium">Quantity</span>
+                                    <span id="detail-quantity" class="font-semibold text-sb-dark text-right">—</span>
+                                </div>
+
+                                <div class="flex items-start justify-between">
+                                    <span class="text-sb-muted font-medium">Total Price</span>
+                                    <span id="detail-total" class="font-bold text-sb-dark text-right">—</span>
+                                </div>
+
+                                <!-- Claim Action Button -->
+                                <div class="pt-4 border-t border-sb-gray/40 flex justify-end">
+                                    <form method="post" action="{% url 'main:validate_claim' %}" class="m-0" id="confirm-claim-form">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="confirm">
+                                        <input type="hidden" name="claim_qr_code" id="confirm-claim-code" value="">
+                                        <button
+                                            type="submit"
+                                            class="px-8 py-2.5 bg-sb-green hover:bg-[#2c472c] text-white font-semibold text-sm rounded-xl transition-colors shadow-sm"
+                                        >
+                                            Claim
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Direct QR Claim Modal (Upload QR without leaving page) -->
+    <div id="orders-claim-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs hidden flex items-center justify-center p-4">
+        <div class="bg-sb-warm-gray border border-sb-gray rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between px-6 py-4 border-b border-sb-gray/50 bg-white">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-sb-mint text-sb-green flex items-center justify-center font-bold">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="7" height="7"/>
+                            <rect x="14" y="3" width="7" height="7"/>
+                            <rect x="14" y="14" width="7" height="7"/>
+                            <rect x="3" y="14" width="7" height="7"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-base font-bold text-sb-dark">Validasi QR Klaim</h3>
+                </div>
+                <button type="button" id="close-orders-claim-modal" class="w-8 h-8 rounded-lg hover:bg-sb-light-gray text-sb-muted hover:text-sb-dark flex items-center justify-center transition-colors">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="p-6 space-y-4">
+                <!-- Status & QR Preview Thumbnail -->
+                <div class="flex items-center gap-4 bg-white p-3.5 rounded-xl border border-sb-gray">
+                    <div class="w-16 h-16 rounded-lg bg-sb-light-gray border border-sb-gray overflow-hidden flex items-center justify-center flex-shrink-0">
+                        <img id="modal-orders-qr-thumb" class="w-full h-full object-contain hidden" alt="QR Preview">
+                        <div id="modal-orders-qr-placeholder" class="text-sb-muted">
+                            <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <polyline points="21 15 16 10 5 21"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p id="modal-orders-status-title" class="text-xs font-semibold text-sb-muted uppercase tracking-wider">Memproses QR</p>
+                        <p id="modal-orders-status-desc" class="text-sm font-bold text-sb-dark truncate">Membaca berkas gambar QR...</p>
+                    </div>
+                </div>
+
+                <!-- Error Alert (hidden by default) -->
+                <div id="modal-orders-error" class="hidden p-3.5 rounded-xl bg-red-50 border border-sb-red text-sb-red text-sm font-medium"></div>
+
+                <!-- Success Alert (hidden by default) -->
+                <div id="modal-orders-success" class="hidden p-3.5 rounded-xl bg-sb-mint border border-sb-green text-sb-green text-sm font-medium"></div>
+
+                <!-- Order Details Box -->
+                <div id="modal-orders-order-box" class="hidden rounded-xl border border-sb-gray overflow-hidden shadow-sm">
+                    <div id="modal-orders-order-code" class="bg-sb-sage text-sb-dark font-bold text-sm px-5 py-3 border-b border-sb-gray">
+                        Order Details: SBQR-XXXXXXXX
+                    </div>
+                    <div class="bg-white p-5 space-y-3 text-sm">
+                        <div class="flex items-start justify-between">
+                            <span class="text-sb-muted font-medium">Buyers</span>
+                            <span id="modal-orders-order-buyer" class="font-semibold text-sb-dark text-right">—</span>
+                        </div>
+                        <div class="flex items-start justify-between">
+                            <span class="text-sb-muted font-medium">Item</span>
+                            <span id="modal-orders-order-item" class="font-semibold text-sb-dark text-right">—</span>
+                        </div>
+                        <div class="flex items-start justify-between">
+                            <span class="text-sb-muted font-medium">Quantity</span>
+                            <span id="modal-orders-order-qty" class="font-semibold text-sb-dark text-right">—</span>
+                        </div>
+                        <div class="flex items-start justify-between">
+                            <span class="text-sb-muted font-medium">Total Price</span>
+                            <span id="modal-orders-order-price" class="font-bold text-sb-green text-right text-base">—</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Actions -->
+            <div class="flex items-center justify-end gap-3 px-6 py-4 bg-white border-t border-sb-gray/50">
+                <button type="button" id="modal-orders-btn-cancel" class="px-5 py-2.5 rounded-xl bg-white border border-sb-dark text-sb-dark font-semibold text-sm hover:bg-sb-light-gray transition-colors">
+                    Batal
+                </button>
+                <button type="button" id="modal-orders-btn-retry" class="hidden px-5 py-2.5 rounded-xl bg-white border border-sb-dark text-sb-dark font-semibold text-sm hover:bg-sb-light-gray transition-colors">
+                    Upload Ulang
+                </button>
+                <button type="button" id="modal-orders-btn-claim" class="hidden px-7 py-2.5 rounded-xl bg-sb-green hover:bg-[#2c472c] text-white font-semibold text-sm transition-colors shadow-sm disabled:opacity-50">
+                    Claim
+                </button>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script>
+    (() => {
+        // Search filter in History tab
+        const searchInput = document.getElementById('orders-search-input');
+        const container = document.getElementById('orders-list-container');
+        if (searchInput && container) {
+            searchInput.addEventListener('input', (e) => {
+                const term = e.target.value.toLowerCase().trim();
+                const items = container.querySelectorAll('.order-list-item');
+                items.forEach((item) => {
+                    const searchData = item.getAttribute('data-search') || '';
+                    if (searchData.includes(term)) {
+                        item.style.display = '';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        // UI elements for Orders tab
+        const codeInput = document.getElementById('claim-code-input-orders');
+        const searchForm = document.getElementById('search-code-form');
+        const errorMessage = document.getElementById('claim-error-message');
+        const detailsHeader = document.getElementById('order-details-header');
+        const placeholder = document.getElementById('order-details-placeholder');
+        const content = document.getElementById('order-details-content');
+        const detailBuyer = document.getElementById('detail-buyer');
+        const detailItem = document.getElementById('detail-item');
+        const detailQuantity = document.getElementById('detail-quantity');
+        const detailTotal = document.getElementById('detail-total');
+        const confirmClaimCode = document.getElementById('confirm-claim-code');
+
+        let lookupSequence = 0;
+        async function generateOrderDetails(code) {
+            const sequence = ++lookupSequence;
+            const cleanCode = (code || '').trim().toUpperCase();
+            hideOrderDetails();
+            if (errorMessage) errorMessage.classList.add('hidden');
+            if (!cleanCode) return;
+
+            try {
+                const response = await fetch(`{% url 'main:validate_claim' %}?code=${encodeURIComponent(cleanCode)}&format=json`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    cache: 'no-store',
+                });
+                const order = await response.json();
+                if (sequence !== lookupSequence) return;
+                if (!order.success || !order.can_claim) {
+                    throw new Error(order.error || 'Pesanan sudah diklaim, belum dibayar, atau melewati batas pengambilan.');
+                }
+                if (detailsHeader) detailsHeader.textContent = `Order Details: ${order.claim_code}`;
+                if (detailBuyer) detailBuyer.textContent = order.buyer_name;
+                if (detailItem) detailItem.textContent = order.item_name;
+                if (detailQuantity) detailQuantity.textContent = order.quantity;
+                if (detailTotal) detailTotal.textContent = order.total_price_formatted;
+                if (confirmClaimCode) confirmClaimCode.value = order.claim_code;
+
+                if (placeholder) placeholder.classList.add('hidden');
+                if (content) content.classList.remove('hidden');
+            } catch (error) {
+                if (sequence !== lookupSequence) return;
+                if (errorMessage) {
+                    errorMessage.textContent = error.message || 'Gagal memeriksa pesanan. Silakan coba lagi.';
+                    errorMessage.classList.remove('hidden');
+                }
+            }
+        }
+
+        function hideOrderDetails() {
+            if (detailsHeader) detailsHeader.textContent = 'Order Details: SBQR-XXXXXXXX';
+            if (content) content.classList.add('hidden');
+            if (placeholder) placeholder.classList.remove('hidden');
+            if (confirmClaimCode) confirmClaimCode.value = '';
+        }
+
+        if (searchForm) {
+            searchForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                generateOrderDetails(codeInput ? codeInput.value : '');
+            });
+        }
+
+        // Upload & decode QR code in Orders tab
+        const uploadInput = document.getElementById('qr-image-upload-orders');
+        const qrPreview = document.getElementById('qr-preview-orders');
+        const qrPlaceholder = document.getElementById('qr-upload-placeholder-orders');
+
+        if (uploadInput) {
+            uploadInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    const dataUrl = evt.target.result;
+                    if (qrPreview && qrPlaceholder) {
+                        qrPreview.src = dataUrl;
+                        qrPreview.classList.remove('hidden');
+                        qrPlaceholder.classList.add('hidden');
+                    }
+
+                    // Scan QR using jsQR
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0, img.width, img.height);
+                        const imageData = ctx.getImageData(0, 0, img.width, img.height);
+                        if (window.jsQR) {
+                            const qr = jsQR(imageData.data, imageData.width, imageData.height);
+                            if (qr && qr.data) {
+                                const val = qr.data.trim();
+                                if (codeInput) codeInput.value = val;
+                                generateOrderDetails(val);
+                                return;
+                            }
+                        }
+
+                        if (errorMessage) {
+                            errorMessage.textContent = 'Gambar tidak mengandung QR Code yang valid.';
+                            errorMessage.classList.remove('hidden');
+                        }
+                    };
+                    img.src = dataUrl;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Header direct QR upload and modal handling
+        const headerUploadInput = document.getElementById('header-qr-upload');
+        const ordersModal = document.getElementById('orders-claim-modal');
+        const ordersBtnClose = document.getElementById('close-orders-claim-modal');
+        const ordersBtnCancel = document.getElementById('modal-orders-btn-cancel');
+        const ordersBtnRetry = document.getElementById('modal-orders-btn-retry');
+        const ordersBtnClaim = document.getElementById('modal-orders-btn-claim');
+
+        const ordersQrThumb = document.getElementById('modal-orders-qr-thumb');
+        const ordersQrPlaceholder = document.getElementById('modal-orders-qr-placeholder');
+        const ordersStatusTitle = document.getElementById('modal-orders-status-title');
+        const ordersStatusDesc = document.getElementById('modal-orders-status-desc');
+        const ordersErrorBox = document.getElementById('modal-orders-error');
+        const ordersSuccessBox = document.getElementById('modal-orders-success');
+        const ordersOrderBox = document.getElementById('modal-orders-order-box');
+        const ordersOrderCode = document.getElementById('modal-orders-order-code');
+        const ordersOrderBuyer = document.getElementById('modal-orders-order-buyer');
+        const ordersOrderItem = document.getElementById('modal-orders-order-item');
+        const ordersOrderQty = document.getElementById('modal-orders-order-qty');
+        const ordersOrderPrice = document.getElementById('modal-orders-order-price');
+
+        let activeHeaderClaimCode = '';
+
+        const closeOrdersModal = () => {
+            if (ordersModal) ordersModal.classList.add('hidden');
+            if (headerUploadInput) headerUploadInput.value = '';
+            activeHeaderClaimCode = '';
+        };
+
+        if (ordersBtnClose) ordersBtnClose.addEventListener('click', closeOrdersModal);
+        if (ordersBtnCancel) ordersBtnCancel.addEventListener('click', closeOrdersModal);
+        if (ordersBtnRetry) {
+            ordersBtnRetry.addEventListener('click', () => {
+                if (headerUploadInput) headerUploadInput.click();
+            });
+        }
+
+        if (ordersModal) {
+            ordersModal.addEventListener('click', (e) => {
+                if (e.target === ordersModal) closeOrdersModal();
+            });
+        }
+
+        if (headerUploadInput) {
+            headerUploadInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                // Reset modal state
+                if (ordersErrorBox) ordersErrorBox.classList.add('hidden');
+                if (ordersSuccessBox) ordersSuccessBox.classList.add('hidden');
+                if (ordersOrderBox) ordersOrderBox.classList.add('hidden');
+                if (ordersBtnRetry) ordersBtnRetry.classList.add('hidden');
+                if (ordersBtnClaim) {
+                    ordersBtnClaim.classList.add('hidden');
+                    ordersBtnClaim.disabled = false;
+                    ordersBtnClaim.textContent = 'Claim';
+                }
+                if (ordersBtnCancel) ordersBtnCancel.classList.remove('hidden');
+
+                if (ordersStatusTitle) ordersStatusTitle.textContent = 'MEMPROSES QR';
+                if (ordersStatusDesc) ordersStatusDesc.textContent = 'Membaca berkas gambar QR...';
+
+                // Open modal
+                if (ordersModal) ordersModal.classList.remove('hidden');
+
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    const dataUrl = evt.target.result;
+                    if (ordersQrThumb) {
+                        ordersQrThumb.src = dataUrl;
+                        ordersQrThumb.classList.remove('hidden');
+                    }
+                    if (ordersQrPlaceholder) ordersQrPlaceholder.classList.add('hidden');
+
+                    const img = new Image();
+                    img.onload = async () => {
+                        let detectedCode = null;
+
+                        // jsQR scan
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0, img.width, img.height);
+                        const imageData = ctx.getImageData(0, 0, img.width, img.height);
+
+                        if (window.jsQR) {
+                            const qr = jsQR(imageData.data, imageData.width, imageData.height);
+                            if (qr && qr.data) {
+                                detectedCode = qr.data.trim();
+                            }
+                        }
+
+                        if (!detectedCode) {
+                            if (ordersStatusTitle) ordersStatusTitle.textContent = 'GAGAL MEMINDAI';
+                            if (ordersStatusDesc) ordersStatusDesc.textContent = 'QR Code tidak terdeteksi';
+                            if (ordersErrorBox) {
+                                ordersErrorBox.textContent = 'Tidak dapat mendeteksi kode QR pada gambar ini. Pastikan gambar jelas atau unggah gambar QR Claim konsumen.';
+                                ordersErrorBox.classList.remove('hidden');
+                            }
+                            if (ordersBtnRetry) ordersBtnRetry.classList.remove('hidden');
+                            return;
+                        }
+
+                        detectedCode = detectedCode.trim().toUpperCase();
+                        activeHeaderClaimCode = detectedCode;
+
+                        if (ordersStatusTitle) ordersStatusTitle.textContent = 'MEMVERIFIKASI';
+                        if (ordersStatusDesc) ordersStatusDesc.textContent = detectedCode;
+
+                        // Request order details from validate_claim endpoint
+                        try {
+                            const res = await fetch(`{% url 'main:validate_claim' %}?code=${encodeURIComponent(detectedCode)}&format=json`, {
+                                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                            });
+                            const data = await res.json();
+
+                            if (data.success) {
+                                if (ordersStatusTitle) ordersStatusTitle.textContent = 'QR CLAIM VALID';
+                                if (ordersStatusDesc) ordersStatusDesc.textContent = data.claim_code;
+
+                                if (ordersOrderCode) ordersOrderCode.textContent = `Order Details: ${data.claim_code}`;
+                                if (ordersOrderBuyer) ordersOrderBuyer.textContent = data.buyer_name || '—';
+                                if (ordersOrderItem) ordersOrderItem.textContent = data.item_name || '—';
+                                if (ordersOrderQty) ordersOrderQty.textContent = data.quantity || '1';
+                                if (ordersOrderPrice) ordersOrderPrice.textContent = data.total_price_formatted || '—';
+                                if (ordersOrderBox) ordersOrderBox.classList.remove('hidden');
+
+                                if (data.can_claim) {
+                                    if (ordersBtnClaim) ordersBtnClaim.classList.remove('hidden');
+                                } else {
+                                    if (ordersErrorBox) {
+                                        ordersErrorBox.textContent = 'Pesanan ini sudah digunakan atau belum dibayar.';
+                                        ordersErrorBox.classList.remove('hidden');
+                                    }
+                                    if (ordersBtnRetry) ordersBtnRetry.classList.remove('hidden');
+                                }
+                            } else {
+                                if (ordersStatusTitle) ordersStatusTitle.textContent = 'VALIDASI GAGAL';
+                                if (ordersStatusDesc) ordersStatusDesc.textContent = detectedCode;
+                                if (ordersErrorBox) {
+                                    ordersErrorBox.textContent = data.error || 'Kode klaim tidak ditemukan untuk merchant ini.';
+                                    ordersErrorBox.classList.remove('hidden');
+                                }
+                                if (ordersBtnRetry) ordersBtnRetry.classList.remove('hidden');
+                            }
+                        } catch (err) {
+                            if (ordersStatusTitle) ordersStatusTitle.textContent = 'ERROR';
+                            if (ordersStatusDesc) ordersStatusDesc.textContent = 'Koneksi bermasalah';
+                            if (ordersErrorBox) {
+                                ordersErrorBox.textContent = 'Gagal menghubungi server. Silakan coba lagi.';
+                                ordersErrorBox.classList.remove('hidden');
+                            }
+                            if (ordersBtnRetry) ordersBtnRetry.classList.remove('hidden');
+                        }
+                    };
+                    img.src = dataUrl;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        if (ordersBtnClaim) {
+            ordersBtnClaim.addEventListener('click', async () => {
+                if (!activeHeaderClaimCode) return;
+                ordersBtnClaim.disabled = true;
+                ordersBtnClaim.textContent = 'Memproses...';
+
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}';
+                const bodyParams = new URLSearchParams();
+                bodyParams.append('action', 'confirm');
+                bodyParams.append('claim_qr_code', activeHeaderClaimCode);
+                bodyParams.append('csrfmiddlewaretoken', csrfToken);
+
+                try {
+                    const res = await fetch("{% url 'main:validate_claim' %}", {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: bodyParams.toString()
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        if (ordersBtnClaim) ordersBtnClaim.classList.add('hidden');
+                        if (ordersBtnCancel) ordersBtnCancel.classList.add('hidden');
+                        if (ordersSuccessBox) {
+                            ordersSuccessBox.textContent = data.message || 'QR valid! Pesanan selesai dan saldo merchant diperbarui.';
+                            ordersSuccessBox.classList.remove('hidden');
+                        }
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1200);
+                    } else {
+                        ordersBtnClaim.disabled = false;
+                        ordersBtnClaim.textContent = 'Claim';
+                        if (ordersErrorBox) {
+                            ordersErrorBox.textContent = data.error || 'Gagal memproses klaim.';
+                            ordersErrorBox.classList.remove('hidden');
+                        }
+                    }
+                } catch (err) {
+                    ordersBtnClaim.disabled = false;
+                    ordersBtnClaim.textContent = 'Claim';
+                    if (ordersErrorBox) {
+                        ordersErrorBox.textContent = 'Terjadi kesalahan sistem saat memproses klaim.';
+                        ordersErrorBox.classList.remove('hidden');
+                    }
+                }
+            });
+        }
+    })();
+</script>
+{% endblock content %}

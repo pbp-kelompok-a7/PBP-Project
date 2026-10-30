@@ -1,29 +1,56 @@
 ﻿{% extends 'base.html' %}
+{% load static %}
 
-{% block title %}Profile â€” SisaBijak{% endblock title %}
+{% block title %}Profile — SisaBijak{% endblock title %}
+
+{% block body_class %}profile-reference-page scrollbar-gutter-stable{% endblock body_class %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/tailwind-pages.css' %}">{% endblock extra_css %}
 
 {% block content %}
-<main class="profile-page">
-    <section class="profile-card">
-        <p class="profile-eyebrow">Your account</p>
-        <h1>Profile</h1>
+<a href="{% url 'main:profile' %}" class="mx-auto mt-[18px] block w-[min(1200px,calc(100%-48px))] text-xs font-semibold leading-[1.5] text-[#111] no-underline hover:underline max-[640px]:w-[calc(100%-24px)]">
+    ← Back to Profile
+</a>
 
-        <div class="profile-name">
-            <span>Username</span>
-            <strong>{{ user.username }}</strong>
+<main class="profile-page grid w-full place-items-center px-5 pt-[22px] pb-[60px] max-[640px]:pt-5">
+    <section class="profile-card mx-auto mt-6 mb-[60px] w-[min(760px,calc(100vw-48px))] box-border rounded-[14px] border-[1.5px] border-[#344334] bg-[#e7efe4] p-9 max-[640px]:w-[calc(100vw-32px)] max-[640px]:p-6" aria-labelledby="profile-title">
+
+        <h1 class="mb-[26px] block text-[36px] font-extrabold leading-[1.2] text-[#304b31] max-[640px]:text-[32px]" id="profile-title">
+            <span class="profile-eyebrow inline text-[36px] font-bold text-[#304b31] max-[640px]:text-[32px]">Your account,</span>
+            Profile.
+        </h1>
+
+        <div class="profile-name mb-4 flex flex-col gap-1.5 rounded-[9px] bg-white p-[14px]">
+            <span class="text-sm font-semibold text-[#333a32]">Username</span>
+            <strong class="block min-h-[46px] [overflow-wrap:anywhere] rounded-md border border-[#e0e4de] bg-[#f8faf7] px-[14px] py-3 text-base font-medium text-[#252b24]">{{ user.username }}</strong>
         </div>
 
-        <div class="profile-name">
-            <span>Role</span>
-            <strong>{% if user.is_superuser %}Admin{% else %}{{ user.profile.get_role_display }}{% endif %}</strong>
+        <div class="profile-name mb-4 flex flex-col gap-1.5 rounded-[9px] bg-white p-[14px]">
+            <span class="text-sm font-semibold text-[#333a32]">Role</span>
+            <strong class="block min-h-[46px] [overflow-wrap:anywhere] rounded-md border border-[#e0e4de] bg-[#f8faf7] px-[14px] py-3 text-base font-medium text-[#252b24]">
+                {% if user.is_superuser %}
+                    Admin
+                {% else %}
+                    {{ user.profile.get_role_display }}
+                {% endif %}
+            </strong>
         </div>
 
-        <form method="POST" action="{% url 'main:logout' %}">
+        <a href="{% url 'main:show_main' %}"
+           class="mt-3 flex min-h-[50px] w-full items-center justify-between gap-2.5 rounded-3xl bg-[#40583d] px-[18px] py-[13px] text-base font-semibold text-white no-underline hover:bg-[#344a32]">
+            <span>Dashboard Customer</span>
+            <span aria-hidden="true">→</span>
+        </a>
+
+        <form method="post"
+              action="{% url 'main:logout' %}"
+              class="mt-[10px] w-full">
             {% csrf_token %}
-            <button type="submit" class="btn btn-dark profile-logout">
-                Logout
+            <button type="submit" class="flex min-h-[50px] w-full items-center justify-center gap-2.5 rounded-3xl bg-[#40583d] px-[18px] py-[13px] text-base font-semibold text-white hover:bg-[#344a32]">
+                Log out
             </button>
         </form>
+
     </section>
 </main>
 {% endblock content %}

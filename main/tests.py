@@ -5,7 +5,10 @@ from io import BytesIO
 from tempfile import TemporaryDirectory
 
 import qrcode
-from PIL import Image
+try:
+    from qrcode.image.pure import PyPNGImage
+except ImportError:
+    PyPNGImage = None
 
 from django.contrib.auth.models import User
 from django.core import signing
@@ -15,6 +18,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from .models import MerchantProduct, MerchantWallet, OrderSystem, UserProfile
+from .views import _payment_png
 
 
 class OrderSystemFlowTests(TestCase):
@@ -65,8 +69,9 @@ class OrderSystemFlowTests(TestCase):
         self.addCleanup(self.media_override.disable)
         self.client.force_login(self.consumer)
 
-    def create_order(self, status=OrderSystem.PaymentStatus.PENDING):
-        claim_code = "SBQR-TEST1234" if status != OrderSystem.PaymentStatus.PENDING else None
+    def create_order(self, status=OrderSystem.PaymentStatus.PENDING, claim_code=None):
+        if status != OrderSystem.PaymentStatus.PENDING and claim_code is None:
+            claim_code = "SBQR-TEST1234"
         return OrderSystem.objects.create(
             consumer=self.consumer,
             product=self.product,
@@ -205,6 +210,67 @@ class OrderSystemFlowTests(TestCase):
         self.assertEqual(order.payment_status, OrderSystem.PaymentStatus.PAID)
         self.assertFalse(MerchantWallet.objects.filter(merchant=self.other_merchant).exists())
 
+    def test_claim_lookup_returns_json_for_unknown_and_missing_codes(self):
+        self.client.force_login(self.merchant)
+        for code in ("", "SBQR-NOTFOUND"):
+            response = self.client.get(reverse("main:validate_claim"), {
+                "code": code, "format": "json",
+            })
+            self.assertFalse(response.json()["success"])
+
+    def test_ajax_claim_identifies_orders_and_credits_wallet_only_once(self):
+        order = self.create_order(status=OrderSystem.PaymentStatus.PAID)
+        other = self.create_order(
+            status=OrderSystem.PaymentStatus.PAID, claim_code="SBQR-SEPARATE",
+        )
+        self.client.force_login(self.merchant)
+        response = self.client.get(reverse("main:validate_claim"), {
+            "code": order.claim_qr_code.lower(), "format": "json",
+        })
+        data = response.json()
+        self.assertTrue(data["can_claim"])
+        self.assertEqual(data["claim_code"], order.claim_qr_code)
+        self.assertEqual(data["items"][0]["order_id"], order.pk)
+        self.assertEqual(data["total_price"], "15000.00")
+        payload = {"action": "confirm", "claim_qr_code": order.claim_qr_code}
+        response = self.client.post(reverse("main:validate_claim"), payload,
+                                    HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertTrue(response.json()["success"])
+        order.refresh_from_db()
+        other.refresh_from_db()
+        self.assertEqual(order.payment_status, OrderSystem.PaymentStatus.COMPLETED)
+        self.assertEqual(other.payment_status, OrderSystem.PaymentStatus.PAID)
+        retry = self.client.post(reverse("main:validate_claim"), payload,
+                                 HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertFalse(retry.json()["success"])
+        self.assertEqual(MerchantWallet.objects.get(merchant=self.merchant).balance, order.total_price)
+        lookup = self.client.get(reverse("main:validate_claim"), {
+            "code": order.claim_qr_code, "format": "json",
+        })
+        self.assertFalse(lookup.json()["can_claim"])
+
+    def test_ajax_claim_rejects_other_merchants_and_expired_orders(self):
+        order = self.create_order(status=OrderSystem.PaymentStatus.PAID)
+        self.client.force_login(self.other_merchant)
+        response = self.client.get(reverse("main:validate_claim"), {
+            "code": order.claim_qr_code, "format": "json",
+        })
+        self.assertFalse(response.json()["success"])
+        response = self.client.post(reverse("main:validate_claim"), {
+            "action": "confirm", "claim_qr_code": order.claim_qr_code,
+        }, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertFalse(response.json()["success"])
+        self.client.force_login(self.merchant)
+        order.pickup_deadline = timezone.now() - timedelta(minutes=1)
+        order.save(update_fields=("pickup_deadline",))
+        response = self.client.post(reverse("main:validate_claim"), {
+            "action": "confirm", "claim_qr_code": order.claim_qr_code,
+        }, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertFalse(response.json()["success"])
+        order.refresh_from_db()
+        self.assertEqual(order.payment_status, OrderSystem.PaymentStatus.EXPIRED)
+        self.assertFalse(MerchantWallet.objects.filter(merchant=self.merchant).exists())
+
     def test_withdrawal_resets_merchant_balance(self):
         MerchantWallet.objects.create(
             merchant=self.merchant,
@@ -249,7 +315,7 @@ class OrderSystemFlowTests(TestCase):
         self.assertContains(response, "Keranjang masih kosong")
         self.assertTemplateUsed(response, "base.html")
         self.assertContains(response, reverse("main:profile"))
-        self.assertRegex(response.content.decode(), r'Contact</a>\s*<a href="/orders/checkout/">Keranjang</a>')
+        self.assertRegex(response.content.decode(), r'<a\s+href="/orders/checkout/"[^>]*title="Cart"')
         self.assertNotContains(response, "product-switcher")
 
         for _ in range(2):
@@ -318,6 +384,147 @@ class OrderSystemFlowTests(TestCase):
         self.assertEqual(MerchantWallet.objects.get(merchant=self.merchant).balance, Decimal("30000"))
         self.assertEqual(OrderSystem.objects.get(product=coffee).payment_status, "paid")
 
+    def test_one_claim_qr_per_store_completes_only_that_stores_cart_items(self):
+        pastry = MerchantProduct.objects.create(
+            merchant=self.merchant, product_name="Pastry Box",
+            product_stock=4, real_price=Decimal("40000"),
+            discount_rate=Decimal("50"),
+            start_pickup=self.product.start_pickup,
+            end_pickup=self.product.end_pickup,
+        )
+        coffee = self.second_product()
+        for product in (self.product, pastry, coffee):
+            self.client.get(reverse("main:checkout_product", args=(product.pk,)))
+        self.client.post(reverse("main:checkout"), {
+            f"quantity_{self.product.pk}": 2,
+            f"quantity_{pastry.pk}": 1,
+            f"quantity_{coffee.pk}": 1,
+        })
+        orders = list(OrderSystem.objects.select_related("product").order_by("pk"))
+        self.assertEqual(len(orders), 3)
+        proof = self.payment_image(orders[0])
+        self.client.force_login(self.admin)
+        scan = self.client.post(reverse("main:simulator_bayar"), {
+            "action": "scan", "payment_proof": proof,
+        })
+        self.assertIn("payment_token", scan.context)
+        self.client.post(reverse("main:simulator_bayar"), {
+            "action": "confirm", "payment_token": scan.context["payment_token"],
+        })
+
+        orders = list(OrderSystem.objects.select_related("product").order_by("pk"))
+        store_orders = [item for item in orders if item.product.merchant_id == self.merchant.pk]
+        other_order = next(item for item in orders if item.product.merchant_id == self.other_merchant.pk)
+        store_codes = [item.claim_qr_code for item in store_orders if item.claim_qr_code]
+        self.assertEqual(len(store_codes), 1)
+        self.assertTrue(other_order.claim_qr_code)
+        self.assertNotEqual(store_codes[0], other_order.claim_qr_code)
+        self.assertTrue(all(item.payment_status == "paid" for item in orders))
+
+        self.client.force_login(self.consumer)
+        my_orders = self.client.get(reverse("main:order_list"))
+        self.assertEqual(my_orders.content.decode().count('class="claim-code"'), 2)
+        self.assertEqual(
+            sum(bool(item.show_store_claim) for item in my_orders.context["active_orders"]), 2,
+        )
+
+        self.client.force_login(self.merchant)
+        detail = self.client.get(reverse("main:validate_claim"), {"code": store_codes[0]})
+        self.assertEqual(len(detail.context["claim_orders"]), 2)
+        self.assertEqual(detail.context["claim_total"], Decimal("50000"))
+        live_detail = self.client.get(reverse("main:validate_claim"), {
+            "code": store_codes[0], "format": "json",
+        }).json()
+        self.assertTrue(live_detail["can_claim"])
+        self.assertEqual(live_detail["quantity"], 3)
+        self.assertEqual(live_detail["total_price"], "50000.00")
+        self.assertEqual({item["order_id"] for item in live_detail["items"]},
+                         {item.pk for item in store_orders})
+        payload = {"action": "confirm", "claim_qr_code": store_codes[0]}
+        self.client.post(reverse("main:validate_claim"), payload)
+        self.assertEqual(
+            list(OrderSystem.objects.filter(pk__in=[item.pk for item in store_orders])
+                 .values_list("payment_status", flat=True)),
+            ["completed", "completed"],
+        )
+        self.assertEqual(MerchantWallet.objects.get(merchant=self.merchant).balance, Decimal("50000"))
+        other_order.refresh_from_db()
+        self.assertEqual(other_order.payment_status, "paid")
+        self.client.post(reverse("main:validate_claim"), payload)
+        self.assertEqual(MerchantWallet.objects.get(merchant=self.merchant).balance, Decimal("50000"))
+
+    def test_store_claim_stays_separate_across_checkouts(self):
+        first = self.create_order(status=OrderSystem.PaymentStatus.PAID)
+        second = self.create_order(
+            status=OrderSystem.PaymentStatus.PAID, claim_code="SBQR-SECOND1234",
+        )
+        self.client.force_login(self.merchant)
+
+        self.client.post(reverse("main:validate_claim"), {
+            "action": "confirm", "claim_qr_code": first.claim_qr_code,
+        })
+
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertEqual(first.payment_status, "completed")
+        self.assertEqual(second.payment_status, "paid")
+        self.assertEqual(MerchantWallet.objects.get(merchant=self.merchant).balance, first.total_price)
+
+    def test_store_claim_uses_remaining_product_when_code_owner_expires(self):
+        first = self.create_order(status=OrderSystem.PaymentStatus.PAID)
+        first.payment_qr_id = "SBPAY-AAAAAAAAAAAA-001"
+        first.pickup_deadline = timezone.now() - timedelta(minutes=1)
+        first.save(update_fields=("payment_qr_id", "pickup_deadline"))
+        second = OrderSystem.objects.create(
+            consumer=self.consumer, product=self.product,
+            quantity=1, unit_price=Decimal("15000"), total_price=Decimal("15000"),
+            payment_status=OrderSystem.PaymentStatus.PAID,
+            payment_qr_id="SBPAY-AAAAAAAAAAAA-002",
+            pickup_deadline=timezone.now() + timedelta(hours=1),
+        )
+        self.client.force_login(self.consumer)
+        my_orders = self.client.get(reverse("main:order_list"))
+        self.assertEqual(my_orders.content.decode().count('class="claim-code"'), 1)
+        self.assertContains(my_orders, first.claim_qr_code)
+
+        self.client.force_login(self.merchant)
+        detail = self.client.get(reverse("main:validate_claim"), {"code": first.claim_qr_code})
+        self.assertTrue(detail.context["claim_ready"])
+        self.assertEqual(detail.context["claim_total"], second.total_price)
+        self.client.post(reverse("main:validate_claim"), {
+            "action": "confirm", "claim_qr_code": first.claim_qr_code,
+        })
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertEqual(first.payment_status, "expired")
+        self.assertEqual(second.payment_status, "completed")
+        self.assertEqual(MerchantWallet.objects.get(merchant=self.merchant).balance, second.total_price)
+
+    def test_existing_per_item_claim_codes_work_as_one_store_claim(self):
+        first = self.create_order(
+            status=OrderSystem.PaymentStatus.PAID, claim_code="SBQR-OLD-FIRST",
+        )
+        second = self.create_order(
+            status=OrderSystem.PaymentStatus.PAID, claim_code="SBQR-OLD-SECOND",
+        )
+        first.payment_qr_id = "SBPAY-BBBBBBBBBBBB-001"
+        second.payment_qr_id = "SBPAY-BBBBBBBBBBBB-002"
+        first.save(update_fields=("payment_qr_id",))
+        second.save(update_fields=("payment_qr_id",))
+
+        my_orders = self.client.get(reverse("main:order_list"))
+        self.assertEqual(my_orders.content.decode().count('class="claim-code"'), 1)
+
+        self.client.force_login(self.merchant)
+        self.client.post(reverse("main:validate_claim"), {
+            "action": "confirm", "claim_qr_code": second.claim_qr_code,
+        })
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertEqual(first.payment_status, "completed")
+        self.assertEqual(second.payment_status, "completed")
+        self.assertEqual(MerchantWallet.objects.get(merchant=self.merchant).balance, Decimal("30000"))
+
     def test_checkout_validates_entire_cart_before_reserving_any_stock(self):
         coffee = self.second_product()
         for product in (self.product, coffee):
@@ -342,9 +549,15 @@ class OrderSystemFlowTests(TestCase):
     def test_simulator_rejects_fake_images_unsigned_qr_and_direct_confirmation(self):
         order = self.create_order()
         blank = BytesIO()
-        Image.new("RGB", (200, 200), "white").save(blank, format="PNG")
+        try:
+            qrcode.make("QR lain", image_factory=PyPNGImage).save(blank)
+        except (ImportError, Exception):
+            qrcode.make("QR lain").save(blank, format="PNG")
         unsigned = BytesIO()
-        qrcode.make("SISABIJAK-PAY:" + order.payment_qr_id).save(unsigned, format="PNG")
+        try:
+            qrcode.make("SISABIJAK-PAY:" + order.payment_qr_id, image_factory=PyPNGImage).save(unsigned)
+        except (ImportError, Exception):
+            qrcode.make("SISABIJAK-PAY:" + order.payment_qr_id).save(unsigned, format="PNG")
         self.client.force_login(self.admin)
         for content in (b"not-a-picture", blank.getvalue(), unsigned.getvalue()):
             response = self.client.post(reverse("main:simulator_bayar"), {
@@ -372,17 +585,30 @@ class OrderSystemFlowTests(TestCase):
             "consumer": self.consumer.pk,
             "items": [[order.payment_qr_id, str(order.total_price)]],
         }, salt="orders.payment")
-        partial = BytesIO()
-        qrcode.make("SISABIJAK-PAY:" + token).save(partial, format="PNG")
+        partial = _payment_png(token)
         self.client.force_login(self.admin)
         response = self.client.post(reverse("main:simulator_bayar"), {
-            "action": "scan", "payment_proof": SimpleUploadedFile("partial.png", partial.getvalue()),
+            "action": "scan", "payment_proof": SimpleUploadedFile("partial.png", partial),
         })
         self.assertContains(response, "QR tidak cocok")
         OrderSystem.objects.filter(pk=order.pk).update(total_price=Decimal("999"))
         response = self.client.post(reverse("main:simulator_bayar"), {"action": "scan", "payment_proof": proof})
         self.assertContains(response, "QR tidak cocok")
         self.assertFalse(OrderSystem.objects.exclude(payment_status="pending").exists())
+
+    def test_simulator_rejects_modified_downloaded_png(self):
+        order = self.create_order()
+        original = bytearray(self.payment_image(order).read())
+        original[50] ^= 1
+        self.client.force_login(self.admin)
+        response = self.client.post(reverse("main:simulator_bayar"), {
+            "action": "scan",
+            "payment_proof": SimpleUploadedFile("payment.png", bytes(original), content_type="image/png"),
+        })
+        self.assertNotIn("payment_token", response.context)
+        order.refresh_from_db()
+        self.assertFalse(order.payment_proof)
+        self.assertEqual(order.payment_status, "pending")
 
     def test_expired_cart_restores_all_stock_once_and_cannot_be_paid(self):
         coffee = self.second_product()

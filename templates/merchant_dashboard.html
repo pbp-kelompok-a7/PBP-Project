@@ -1,69 +1,465 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Dashboard Merchant — SisaBijak{% endblock title %}
 
 {% block content %}
-<main class="product-page">
-    <div class="product-heading">
-        <div>
-            <p class="eyebrow">Merchant Dashboard</p>
-            <h1>Dashboard Merchant</h1>
-            <p>Kelola produk, pesanan masuk, riwayat redeem, dan validasi kode pengambilan.</p>
-        </div>
-        <a class="btn btn-dark" href="{% url 'main:product_create' %}">+ Tambah Produk</a>
+<main class="w-full max-w-[1140px] mx-auto px-4 py-8 font-inter">
+
+    <!-- Greeting Header -->
+    <div class="mb-6">
+        <h1 class="text-3xl md:text-4xl font-bold text-sb-dark tracking-tight">
+            Hello, {{ user.get_full_name|default:user.username }}
+        </h1>
     </div>
 
-    <nav class="order-section-nav" aria-label="Dashboard merchant">
-        <a class="secondary-button" href="{% url 'main:product_view' %}" aria-current="page">Dashboard &amp; Produk</a>
-        <a class="secondary-button" href="{% url 'main:merchant_orders' %}">Pesanan Masuk</a>
-        <a class="secondary-button" href="{% url 'main:merchant_orders' %}?tab=history">Riwayat Redeem</a>
-        <a class="secondary-button" href="{% url 'main:validate_claim' %}">Validasi Kode</a>
-    </nav>
+    <!-- Subnav Tabs & Action Buttons -->
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <!-- Subnav Tabs -->
+        <div class="flex items-center gap-3">
+            <a href="{% url 'main:product_view' %}" class="px-6 py-2 rounded-full font-semibold text-sm transition-all bg-sb-mint border-2 border-sb-green text-sb-dark shadow-sm">
+                Products
+            </a>
+            <a href="{% url 'main:merchant_orders' %}" class="px-6 py-2 rounded-full font-semibold text-sm transition-all bg-white border-2 border-sb-dark text-sb-dark hover:bg-sb-light-gray">
+                Orders
+            </a>
+            <a href="{% url 'main:merchant_orders' %}?tab=history" class="px-6 py-2 rounded-full font-semibold text-sm transition-all bg-white border-2 border-sb-dark text-sb-dark hover:bg-sb-light-gray">
+                History
+            </a>
+        </div>
 
+        <!-- Action Buttons -->
+        <div class="flex items-center gap-3">
+            <label for="dashboard-qr-upload" class="px-5 py-2.5 rounded-xl bg-sb-green hover:bg-[#2c472c] text-white font-semibold text-sm transition-colors shadow-sm cursor-pointer inline-flex items-center gap-2 select-none" title="Upload QR Claim langsung">
+                <!-- QR Code Icon -->
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7"/>
+                    <rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/>
+                    <rect x="3" y="14" width="7" height="7"/>
+                </svg>
+                <span>Scan QR Claim</span>
+                <input type="file" id="dashboard-qr-upload" accept="image/*" class="hidden">
+            </label>
+            <a href="{% url 'main:product_create' %}" class="px-5 py-2.5 rounded-xl bg-sb-green hover:bg-[#2c472c] text-white font-semibold text-sm transition-colors shadow-sm">
+                + Add Product
+            </a>
+        </div>
+    </div>
+
+    <!-- Alert / Flash Messages -->
     {% if messages %}
-        {% for message in messages %}<p class="flash-message">{{ message }}</p>{% endfor %}
+        <div class="mb-6 space-y-2">
+            {% for message in messages %}
+                <div class="p-4 rounded-xl text-sm font-medium {% if message.tags == 'success' %}bg-sb-mint text-sb-green border border-sb-green{% elif message.tags == 'error' %}bg-red-50 text-sb-red border border-sb-red{% else %}bg-sb-light-gray text-sb-dark border border-sb-gray{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
     {% endif %}
 
-    <section class="merchant-account" aria-label="Informasi akun merchant">
-        <div>
-            <span>Username</span>
-            <strong>{{ user.username }}</strong>
-        </div>
-        <div>
-            <span>Role</span>
-            <strong>{{ user.profile.get_role_display }}</strong>
-        </div>
-        <form method="post" action="{% url 'main:logout' %}">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-outline">Logout</button>
-        </form>
-    </section>
+    <!-- Outer Card Container -->
+    <div class="bg-sb-warm-gray border border-sb-gray rounded-2xl p-6 shadow-sm min-h-[500px]">
+        {% if products %}
+            <div class="overflow-x-auto rounded-xl border border-sb-gray/40 bg-white shadow-sm">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-sb-sage text-sb-dark text-xs md:text-sm font-bold uppercase tracking-wider">
+                            <th class="py-3.5 px-4 rounded-tl-xl">Product</th>
+                            <th class="py-3.5 px-3 text-center">Stock</th>
+                            <th class="py-3.5 px-3">Status</th>
+                            <th class="py-3.5 px-3">Price</th>
+                            <th class="py-3.5 px-3 text-center">Discount</th>
+                            <th class="py-3.5 px-3">Start Pickup</th>
+                            <th class="py-3.5 px-3">End Pickup</th>
+                            <th class="py-3.5 px-4 text-center rounded-tr-xl">Edit</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-sb-gray/50 text-sm">
+                        {% for product in products %}
+                            <tr class="hover:bg-sb-mint/40 transition-colors">
+                                <!-- Product Name & Code -->
+                                <td class="py-4 px-4 align-middle">
+                                    <strong class="text-sb-dark font-semibold text-base block">{{ product.product_name }}</strong>
+                                    <span class="text-xs text-sb-muted font-mono tracking-wider">{{ product.product_id }}</span>
+                                </td>
 
-    {% if products %}
-        <div class="product-table-wrap">
-            <table class="product-table">
-                <thead><tr><th>Produk</th><th>Stok</th><th>Status</th><th>Harga</th><th>Pickup</th><th>Aksi</th></tr></thead>
-                <tbody>
-                    {% for product in products %}
-                    <tr>
-                        <td><strong>{{ product.product_name }}</strong><br><small>{{ product.product_id }}</small></td>
-                        <td>{{ product.product_stock }}</td>
-                        <td><span class="status status-{{ product.product_status }}">{{ product.get_product_status_display }}</span></td>
-                        <td><s>Rp{{ product.real_price|floatformat:0 }}</s><br><strong>Rp{{ product.discount_price|floatformat:0 }}</strong><br><small>Diskon {{ product.discount_rate|floatformat:2 }}%</small></td>
-                        <td>{{ product.start_pickup|date:"d M Y, H:i" }}<br><small>s.d. {{ product.end_pickup|date:"d M Y, H:i" }}</small></td>
-                        <td class="product-actions">
-                            <a href="{% url 'main:product_update' product.product_id %}">Edit</a>
-                            <form method="post" action="{% url 'main:product_delete' product.product_id %}" onsubmit="return confirm('Hapus produk ini?');">
-                                {% csrf_token %}<button type="submit">Hapus</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                                <!-- Stock -->
+                                <td class="py-4 px-3 text-center align-middle font-semibold text-sb-dark">
+                                    {{ product.product_stock }}
+                                </td>
+
+                                <!-- Status -->
+                                <td class="py-4 px-3 align-middle">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {% if product.product_status == 'available' %}bg-green-100 text-green-800{% elif product.product_status == 'sold_out' %}bg-yellow-100 text-yellow-800{% else %}bg-gray-100 text-gray-700{% endif %}">
+                                        {{ product.get_product_status_display }}
+                                    </span>
+                                </td>
+
+                                <!-- Price -->
+                                <td class="py-4 px-3 align-middle">
+                                    <strong class="text-sb-dark font-semibold block">Rp. {{ product.discount_price|floatformat:0 }}</strong>
+                                    <span class="text-xs text-sb-muted line-through block">Rp. {{ product.real_price|floatformat:0 }}</span>
+                                </td>
+
+                                <!-- Discount -->
+                                <td class="py-4 px-3 text-center align-middle font-medium text-sb-dark">
+                                    {{ product.discount_rate|floatformat:0 }}%
+                                </td>
+
+                                <!-- Start Pickup -->
+                                <td class="py-4 px-3 align-middle text-xs md:text-sm text-sb-dark whitespace-nowrap">
+                                    {{ product.start_pickup|date:"d F Y, H.i" }}
+                                </td>
+
+                                <!-- End Pickup -->
+                                <td class="py-4 px-3 align-middle text-xs md:text-sm text-sb-dark whitespace-nowrap">
+                                    {{ product.end_pickup|date:"d F Y, H.i" }}
+                                </td>
+
+                                <!-- Actions: Delete & Edit -->
+                                <td class="py-4 px-4 text-center align-middle whitespace-nowrap">
+                                    <div class="inline-flex items-center gap-2">
+                                        <!-- Delete Button (Red) -->
+                                        <form method="post" action="{% url 'main:product_delete' product.product_id %}" onsubmit="return confirm('Hapus produk ini?');" class="inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="w-8 h-8 rounded-lg bg-sb-red hover:bg-[#a93226] text-white flex items-center justify-center transition-colors shadow-sm" title="Hapus Produk">
+                                                <!-- Trash Icon -->
+                                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <polyline points="3 6 5 6 21 6"/>
+                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                                    <line x1="10" y1="11" x2="10" y2="17"/>
+                                                    <line x1="14" y1="11" x2="14" y2="17"/>
+                                                </svg>
+                                            </button>
+                                        </form>
+
+                                        <!-- Edit Button (Green) -->
+                                        <a href="{% url 'main:product_update' product.product_id %}" class="w-8 h-8 rounded-lg bg-sb-green hover:bg-[#2c472c] text-white flex items-center justify-center transition-colors shadow-sm" title="Edit Produk">
+                                            <!-- Pencil/Edit Icon -->
+                                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                                            </svg>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <!-- Empty state -->
+            <div class="py-16 text-center">
+                <div class="w-16 h-16 rounded-full bg-sb-mint text-sb-green flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                    </svg>
+                </div>
+                <h2 class="text-xl font-bold text-sb-dark mb-2">Belum ada produk</h2>
+                <p class="text-sb-muted text-sm max-w-md mx-auto mb-6">
+                    Unggah produk surplus makanan pertama Anda untuk mulai menerima pesanan pickup dari konsumen.
+                </p>
+                <a href="{% url 'main:product_create' %}" class="inline-flex items-center px-6 py-2.5 bg-sb-green hover:bg-[#2c472c] text-white font-semibold text-sm rounded-xl transition-colors shadow-sm">
+                    + Tambah Produk Sekarang
+                </a>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Direct QR Claim Modal (Upload QR without leaving dashboard) -->
+    <div id="claim-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs hidden flex items-center justify-center p-4">
+        <div class="bg-sb-warm-gray border border-sb-gray rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between px-6 py-4 border-b border-sb-gray/50 bg-white">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-sb-mint text-sb-green flex items-center justify-center font-bold">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="7" height="7"/>
+                            <rect x="14" y="3" width="7" height="7"/>
+                            <rect x="14" y="14" width="7" height="7"/>
+                            <rect x="3" y="14" width="7" height="7"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-base font-bold text-sb-dark">Validasi QR Klaim</h3>
+                </div>
+                <button type="button" id="close-claim-modal" class="w-8 h-8 rounded-lg hover:bg-sb-light-gray text-sb-muted hover:text-sb-dark flex items-center justify-center transition-colors">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="p-6 space-y-4">
+                <!-- Status & QR Preview Thumbnail -->
+                <div class="flex items-center gap-4 bg-white p-3.5 rounded-xl border border-sb-gray">
+                    <div class="w-16 h-16 rounded-lg bg-sb-light-gray border border-sb-gray overflow-hidden flex items-center justify-center flex-shrink-0">
+                        <img id="modal-qr-thumb" class="w-full h-full object-contain hidden" alt="QR Preview">
+                        <div id="modal-qr-placeholder" class="text-sb-muted">
+                            <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <polyline points="21 15 16 10 5 21"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p id="modal-status-title" class="text-xs font-semibold text-sb-muted uppercase tracking-wider">Memproses QR</p>
+                        <p id="modal-status-desc" class="text-sm font-bold text-sb-dark truncate">Membaca berkas gambar QR...</p>
+                    </div>
+                </div>
+
+                <!-- Error Alert (hidden by default) -->
+                <div id="modal-error" class="hidden p-3.5 rounded-xl bg-red-50 border border-sb-red text-sb-red text-sm font-medium"></div>
+
+                <!-- Success Alert (hidden by default) -->
+                <div id="modal-success" class="hidden p-3.5 rounded-xl bg-sb-mint border border-sb-green text-sb-green text-sm font-medium"></div>
+
+                <!-- Order Details Box (styled matching merchant orders) -->
+                <div id="modal-order-box" class="hidden rounded-xl border border-sb-gray overflow-hidden shadow-sm">
+                    <div id="modal-order-code" class="bg-sb-sage text-sb-dark font-bold text-sm px-5 py-3 border-b border-sb-gray">
+                        Order Details: SBQR-XXXXXXXX
+                    </div>
+                    <div class="bg-white p-5 space-y-3 text-sm">
+                        <div class="flex items-start justify-between">
+                            <span class="text-sb-muted font-medium">Buyers</span>
+                            <span id="modal-order-buyer" class="font-semibold text-sb-dark text-right">—</span>
+                        </div>
+                        <div class="flex items-start justify-between">
+                            <span class="text-sb-muted font-medium">Item</span>
+                            <span id="modal-order-item" class="font-semibold text-sb-dark text-right">—</span>
+                        </div>
+                        <div class="flex items-start justify-between">
+                            <span class="text-sb-muted font-medium">Quantity</span>
+                            <span id="modal-order-qty" class="font-semibold text-sb-dark text-right">—</span>
+                        </div>
+                        <div class="flex items-start justify-between">
+                            <span class="text-sb-muted font-medium">Total Price</span>
+                            <span id="modal-order-price" class="font-bold text-sb-green text-right text-base">—</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Actions -->
+            <div class="flex items-center justify-end gap-3 px-6 py-4 bg-white border-t border-sb-gray/50">
+                <button type="button" id="modal-btn-cancel" class="px-5 py-2.5 rounded-xl bg-white border border-sb-dark text-sb-dark font-semibold text-sm hover:bg-sb-light-gray transition-colors">
+                    Batal
+                </button>
+                <button type="button" id="modal-btn-retry" class="hidden px-5 py-2.5 rounded-xl bg-white border border-sb-dark text-sb-dark font-semibold text-sm hover:bg-sb-light-gray transition-colors">
+                    Upload Ulang
+                </button>
+                <button type="button" id="modal-btn-claim" class="hidden px-7 py-2.5 rounded-xl bg-sb-green hover:bg-[#2c472c] text-white font-semibold text-sm transition-colors shadow-sm disabled:opacity-50">
+                    Claim
+                </button>
+            </div>
         </div>
-    {% else %}
-        <section class="empty-products"><h2>Belum ada produk</h2><p>Unggah produk pertama Anda untuk mulai menerima pesanan pickup.</p></section>
-    {% endif %}
+    </div>
 </main>
+
+<!-- Hidden CSRF token for AJAX -->
+{% csrf_token %}
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script>
+    (() => {
+        const uploadInput = document.getElementById('dashboard-qr-upload');
+        const modal = document.getElementById('claim-modal');
+        const btnClose = document.getElementById('close-claim-modal');
+        const btnCancel = document.getElementById('modal-btn-cancel');
+        const btnRetry = document.getElementById('modal-btn-retry');
+        const btnClaim = document.getElementById('modal-btn-claim');
+
+        const qrThumb = document.getElementById('modal-qr-thumb');
+        const qrPlaceholder = document.getElementById('modal-qr-placeholder');
+        const statusTitle = document.getElementById('modal-status-title');
+        const statusDesc = document.getElementById('modal-status-desc');
+        const errorBox = document.getElementById('modal-error');
+        const successBox = document.getElementById('modal-success');
+        const orderBox = document.getElementById('modal-order-box');
+        const orderCode = document.getElementById('modal-order-code');
+        const orderBuyer = document.getElementById('modal-order-buyer');
+        const orderItem = document.getElementById('modal-order-item');
+        const orderQty = document.getElementById('modal-order-qty');
+        const orderPrice = document.getElementById('modal-order-price');
+
+        let activeClaimCode = '';
+
+        const closeModal = () => {
+            modal.classList.add('hidden');
+            if (uploadInput) uploadInput.value = '';
+            activeClaimCode = '';
+        };
+
+        if (btnClose) btnClose.addEventListener('click', closeModal);
+        if (btnCancel) btnCancel.addEventListener('click', closeModal);
+        if (btnRetry) {
+            btnRetry.addEventListener('click', () => {
+                if (uploadInput) uploadInput.click();
+            });
+        }
+
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+        }
+
+        if (uploadInput) {
+            uploadInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                // Reset modal state
+                errorBox.classList.add('hidden');
+                successBox.classList.add('hidden');
+                orderBox.classList.add('hidden');
+                btnRetry.classList.add('hidden');
+                btnClaim.classList.add('hidden');
+                btnClaim.disabled = false;
+                btnClaim.textContent = 'Claim';
+                btnCancel.classList.remove('hidden');
+
+                statusTitle.textContent = 'MEMPROSES QR';
+                statusDesc.textContent = 'Membaca berkas gambar QR...';
+
+                // Open modal
+                modal.classList.remove('hidden');
+
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    const dataUrl = evt.target.result;
+                    qrThumb.src = dataUrl;
+                    qrThumb.classList.remove('hidden');
+                    qrPlaceholder.classList.add('hidden');
+
+                    const img = new Image();
+                    img.onload = async () => {
+                        let detectedCode = null;
+
+                        // jsQR scan
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0, img.width, img.height);
+                        const imageData = ctx.getImageData(0, 0, img.width, img.height);
+
+                        if (window.jsQR) {
+                            const code = jsQR(imageData.data, imageData.width, imageData.height);
+                            if (code && code.data) {
+                                detectedCode = code.data.trim();
+                            }
+                        }
+
+                        if (!detectedCode) {
+                            statusTitle.textContent = 'GAGAL MEMINDAI';
+                            statusDesc.textContent = 'QR Code tidak terdeteksi';
+                            errorBox.textContent = 'Tidak dapat mendeteksi kode QR pada gambar ini. Pastikan gambar jelas atau unggah gambar QR Claim konsumen.';
+                            errorBox.classList.remove('hidden');
+                            btnRetry.classList.remove('hidden');
+                            return;
+                        }
+
+                        detectedCode = detectedCode.trim().toUpperCase();
+                        activeClaimCode = detectedCode;
+
+                        statusTitle.textContent = 'MEMVERIFIKASI';
+                        statusDesc.textContent = detectedCode;
+
+                        // Request order details from validate_claim endpoint
+                        try {
+                            const res = await fetch(`{% url 'main:validate_claim' %}?code=${encodeURIComponent(detectedCode)}&format=json`, {
+                                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                            });
+                            const data = await res.json();
+
+                            if (data.success) {
+                                statusTitle.textContent = 'QR CLAIM VALID';
+                                statusDesc.textContent = data.claim_code;
+
+                                orderCode.textContent = `Order Details: ${data.claim_code}`;
+                                orderBuyer.textContent = data.buyer_name || '—';
+                                orderItem.textContent = data.item_name || '—';
+                                orderQty.textContent = data.quantity || '1';
+                                orderPrice.textContent = data.total_price_formatted || '—';
+                                orderBox.classList.remove('hidden');
+
+                                if (data.can_claim) {
+                                    btnClaim.classList.remove('hidden');
+                                } else {
+                                    errorBox.textContent = 'Pesanan ini sudah digunakan atau belum dibayar.';
+                                    errorBox.classList.remove('hidden');
+                                    btnRetry.classList.remove('hidden');
+                                }
+                            } else {
+                                statusTitle.textContent = 'VALIDASI GAGAL';
+                                statusDesc.textContent = detectedCode;
+                                errorBox.textContent = data.error || 'Kode klaim tidak ditemukan untuk merchant ini.';
+                                errorBox.classList.remove('hidden');
+                                btnRetry.classList.remove('hidden');
+                            }
+                        } catch (err) {
+                            statusTitle.textContent = 'ERROR';
+                            statusDesc.textContent = 'Koneksi bermasalah';
+                            errorBox.textContent = 'Gagal menghubungi server. Silakan coba lagi.';
+                            errorBox.classList.remove('hidden');
+                            btnRetry.classList.remove('hidden');
+                        }
+                    };
+                    img.src = dataUrl;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        if (btnClaim) {
+            btnClaim.addEventListener('click', async () => {
+                if (!activeClaimCode) return;
+                btnClaim.disabled = true;
+                btnClaim.textContent = 'Memproses...';
+
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}';
+                const bodyParams = new URLSearchParams();
+                bodyParams.append('action', 'confirm');
+                bodyParams.append('claim_qr_code', activeClaimCode);
+                bodyParams.append('csrfmiddlewaretoken', csrfToken);
+
+                try {
+                    const res = await fetch("{% url 'main:validate_claim' %}", {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: bodyParams.toString()
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        btnClaim.classList.add('hidden');
+                        btnCancel.classList.add('hidden');
+                        successBox.textContent = data.message || 'QR valid! Pesanan selesai dan saldo merchant diperbarui.';
+                        successBox.classList.remove('hidden');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1200);
+                    } else {
+                        btnClaim.disabled = false;
+                        btnClaim.textContent = 'Claim';
+                        errorBox.textContent = data.error || 'Gagal memproses klaim.';
+                        errorBox.classList.remove('hidden');
+                    }
+                } catch (err) {
+                    btnClaim.disabled = false;
+                    btnClaim.textContent = 'Claim';
+                    errorBox.textContent = 'Terjadi kesalahan sistem saat memproses klaim.';
+                    errorBox.classList.remove('hidden');
+                }
+            });
+        }
+    })();
+</script>
 {% endblock content %}

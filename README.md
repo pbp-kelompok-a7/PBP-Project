@@ -1,208 +1,264 @@
-# PBP-Project
-
-# Deskripsi
-SisaBijak adalah platform marketplace food rescue berbasis Django yang menghubungkan toko roti dan cafe lokal dengan mahasiswa atau pekerja yang lagi nyari makanan berkualitas dengan harga miring.
+# SisaBijak 
+SisaBijak adalah platform e-commerce food rescue berbasis Django yang dirancang untuk mengatasi masalah pemborosan pangan (food waste) dengan menjembatani bisnis kuliner lokal (seperti restoran, kafe, dan toko roti) dengan konsumen. Melalui platform ini, merchant dapat menjual surplus makanan berkualitas yang masih layak konsumsi menjelang jam operasional berakhir dengan potongan harga khusus agar tidak terbuang sia-sia. Inisiatif ini memberikan solusi saling menguntungkan dimana konsumen memperoleh makanan berkualitas dengan harga yang jauh lebih hemat, merchant dapat meminimalisasi kerugian dari stok berlebih, dan lingkungan terlindungi melalui pengurangan emisi karbon akibat limbah makanan.
 
 # Anggota Kelompok
 1. Debora Putri Dion Simamora (2506544126)
-2. Jefry Acmal Dzikhrullah  (2506614795)
+2. Jefry Acmal Dzikhrullah (2506614795)
 3. Khalisha Nalani Chandra (2506625041)
 4. Rafael Darius Sagala (2506584275)
 5. Ghaisan Nabil Iradat (2506619051)
 
+# Roles
+- `Guest` : AnonymousUser
+- `Consumer` : Akun consumer, self register via web
+- `Merchant` : Akun merchant, register manual by contact Admin
+- `Admin` : SuperUser
+
 # Fitur
-### 1. Modul Mystery Box Marketplace & Catalog
+
+### 1. Modul Catalog
 **Penanggung Jawab** : Debora Putri Dion Simamora
 
-**Deskripsi Fitur:** Katalog tempat pembeli (mahasiswa/pekerja) bisa ngeliat, nyari, dan milih paket Mystery Box dari resto/cafe yang lagi diskon gede (50-70%) pas mau tutup toko, lengkap dengan ulasan dari pembeli yang udah ngambil pesanannya.
+**Deskripsi Fitur:** 
+Modul ini berfungsi sebagai etalase publik tempat pengguna dapat menjelajahi, mencari, dan memfilter berbagai penawaran makanan surplus dari mitra merchant dengan potongan harga khusus. Pengguna dapat melihat detail produk, lokasi toko, serta jadwal pengambilan sebelum melakukan pemesanan. Selain itu, modul ini menyediakan sistem ulasan dan penilaian berbasis rating bintang dari konsumen yang telah menyelesaikan transaksi pesanan.
 
 **Models:**
-- Review
-  * user : ForeignKey(User), consumer yang memberi ulasan
-  * order : OneToOneField(OrderSystem), pesanan berstatus `completed` yang diulas (1 pesanan = 1 ulasan)
-  * product : ForeignKey(MerchantProduct), produk Mystery Box yang diulas
-  * rating : PositiveSmallIntegerField, nilai 1-5
-  * comment : TextField, isi ulasan
-  * created_at : DateTimeField, waktu ulasan dibuat
-  * updated_at : DateTimeField, waktu ulasan terakhir diubah
+* **Model Catalog (Review)**
+  * `user` : Akun Consumer yang memberikan ulasan
+  * `order` : Pesanan berstatus `completed` pada sistem OrderSystem yang sedang diulas (1 pesanan = 1 ulasan)
+  * `product` : Paket makanan dari Merchant Product yang diulas
+  * `rating` : Nilai angka ulasan yang diberikan dalam skala 1–5
+  * `comment` : Isi teks ulasan yang ditulis oleh konsumen
+  * `created_at` : Waktu sistem saat ulasan pertama kali dibuat
+  * `updated_at` : Waktu sistem saat ulasan terakhir kali diubah
 
-**Views:**
-*Guest / Consumer*
-- catalog_list_view(request) : menampilkan halaman katalog berisi `MerchantProduct` berstatus `Available` dan stok > 0, diurutkan dari diskon terbesar
-- get_catalog_json(request) : endpoint JSON untuk search `product_name` / nama toko dan filter `discount_price` (dipanggil via AJAX)
-- catalog_detail_view(request, product_id) : detail produk (harga asli vs diskon, `product_stock`, jam pickup, alamat), daftar ulasan, dan tombol "Klaim"
-- get_reviews_json(request, product_id) : endpoint JSON daftar ulasan dan rata-rata rating suatu produk
-
-*Consumer*
-- review_create_view(request, product_id) : membuat ulasan dari pesanan `completed` milik sendiri yang belum diulas (via AJAX)
-- review_update_view(request, pk) : mengubah ulasan milik sendiri
-- review_delete_view(request, pk) : menghapus ulasan milik sendiri (via AJAX)
-
-**Aturan Validasi:**
-- Katalog hanya menampilkan produk dengan status `Available` dan `product_stock` > 0
-- Produk `Sold Out` / `Inactive` tetap bisa dibuka lewat link, tapi tombol "Klaim" diganti "Sold Out"
-- Guest bisa melihat katalog dan ulasan, tapi harus login untuk klaim dan menulis ulasan
-- Ulasan hanya bisa dibuat dari `OrderSystem` milik sendiri yang berstatus `completed`, dan satu pesanan hanya bisa diulas satu kali
-- Consumer hanya bisa mengubah dan menghapus ulasannya sendiri
+**Views (Method):**
+* `catalog_list_view()` : Menampilkan halaman katalog berisi daftar produk Merchant Product yang berstatus Available
+  * Auth: Guest, Consumer, Merchant, Admin
+* `get_catalog_json()` : Endpoint API untuk pencarian nama produk dan filter harga diskon
+  * Auth: Guest, Consumer, Merchant, Admin
+* `catalog_detail_view()` : Menampilkan detail produk, daftar ulasan, dan tombol "Klaim"
+  * Auth: Guest, Consumer, Merchant, Admin
+* `get_reviews_json()` : Endpoint API untuk memuat daftar ulasan dan rata-rata rating suatu produk
+  * Auth: Guest, Consumer, Merchant, Admin
+* `review_create_view()` : Membuat ulasan baru khusus untuk pesanan yang sudah selesai
+  * Auth: Consumer
+* `review_update_view()` : Mengubah isi ulasan yang sudah dibuat
+  * Auth: Consumer
+* `review_delete_view()` : Menghapus ulasan dari sistem
+  * Auth: Consumer
 
 **Templates:**
-- catalog.html : halaman katalog dengan search bar, filter harga, dan grid kartu produk
-- catalog_detail.html : halaman detail produk beserta ulasan, form ulasan, dan tombol "Klaim"
-- review_form.html : halaman edit ulasan
+* `catalog.html` : Halaman utama katalog dengan fitur pencarian dan daftar produk
+* `catalog_detail.html` : Halaman detail produk tunggal beserta ulasan dan tombol "Klaim"
+* `review_form.html` : Formulir antarmuka untuk penambahan atau pengubahan ulasan
 
-**Data Awal:**
-- `python manage.py seed_catalog` : mengisi 50 produk Mystery Box beserta akun merchant-nya dari `catalog/data/paket_dummy.json`
+---
 
-**Integrasi Antar Modul:**
-- Merchant Product : membaca `product_name`, `real_price`, `discount_rate` / `discount_price`, `product_stock`, `product_status`, `start_pickup`, `end_pickup`, `merchant_name`, dan `pickup_address`
-- Order System : `Review` terhubung ke `OrderSystem` berstatus `completed`, dan tombol "Klaim" mengarah ke `main:checkout_product`
-- Authentication : halaman yang butuh login diarahkan ke `main:login`
-- Template dasar : semua halaman catalog memakai `base.html`
-
-### 2. Modul Merchant Inventory & Pickup Manager
+### 2. Modul Merchant Product
 **Penanggung Jawab** : Jefry Acmal Dzikhrullah
 
+**Deskripsi Fitur:**
+Modul ini memfasilitasi merchant untuk mengelola inventaris makanan surplus yang siap dijual kepada konsumen melalui dasbor khusus. Merchant dapat menambahkan produk baru, mengatur stok harian, menetapkan harga asli dan diskon, serta menentukan jadwal penjemputan (pickup schedule). Selain itu, merchant dapat memperbarui rincian produk, mengunggah foto makanan, maupun menonaktifkan produk yang sudah tidak tersedia.
+
 **Models:**
-* Merchant Inventory
+* **Model MerchantProduct**
+  * `product_id` : String id unik yang dimiliki setiap produk
+  * `product_name` : Nama produk yang diunggah merchant
+  * `product_stock` : Jumlah produk yang diunggah merchant
+  * `product_status` : Available / Sold Out / Inactive
+  * `real_price` : Harga asli produk yang diunggah merchant
+  * `discount_price` : Besaran diskon yang diunggah merchant
+  * `start_pickup` : Waktu produk bisa di-pickup (waktu rilis)
+  * `end_pickup` : Waktu produk sudah tidak bisa di-pickup (waktu stop)
+  * `product_photo` : FileField, berkas gambar/foto produk yang diunggah merchant
 
-  * id_inventory
-  * restaurant_id
-  * nama_produk
-  * stok_harian
-  * harga_asli
-  * harga_diskon
-
-* Pickup Manager
-  * jam_mulai_pickup
-  * jam_selesai_pickup
-  * status (tersedia, habis, nonaktif)
-  * created_at
-
-**Views:**
-
-* inventory_list_view() : menampilkan daftar stok sisa harian pada dashboard merchant
-* inventory_create_view() : form bagi merchant untuk menginput stok/paket makanan baru
-* update_inventory_view() : update jumlah stok, harga diskon, atau batas jam penjemputan
-* delete_inventory_view() : menghapus atau menonaktifkan paket makanan yang sudah tidak relevan
+**Views (Method):**
+* `product_view()` : View product yang diunggah merchant
+  * Auth: Merchant
+* `product_create()` : Create product oleh merchant
+  * Auth: Merchant
+* `product_update()` : Edit product yang diunggah merchant
+  * Auth: Merchant
+* `product_delete` : Delete product yang diunggah merchant
+  * Auth: Merchant
 
 **Templates:**
+* `product_form.html` : Formulir untuk menambah atau mengedit produk merchant
+* `merchant_dashboard.html` : Halaman dasbor merchant untuk mengelola daftar produk
 
-* inventory_list.html
-* inventory_form.html
-* merchant_dashboard.html 
+---
 
-### 3. Modul Order Validation & Claim System
-
+### 3. Modul Order System
 **Penanggung Jawab** : Rafael Darius Sagala
 
 **Deskripsi Fitur:**
-Sistem pesanan yang bakal ngeluarin kode unik/QR Code buat ditunjukin ke kasir toko pas pembeli ngambil makanannya di lokasi.
+Modul ini mengatur alur transaksi pemesanan makanan mulai dari proses checkout keranjang oleh konsumen hingga pembuatan kode QR pembayaran (SisaBayarQR). Setelah pembayaran diverifikasi, sistem menerbitkan kode klaim unik dan QR Code klaim yang dapat ditukarkan konsumen langsung di kasir toko. Kasir merchant selanjutnya memvalidasi QR Code tersebut untuk menyelesaikan pesanan sekaligus mencatat pendapatan ke saldo merchant yang dapat dicairkan (disbursement).
 
 **Models:**
-* Order
-  * consumer : ForeignKey(User), pembeli yang melakukan klaim
-  * inventory : ForeignKey(MerchantInventory), paket Mystery Box yang diklaim
-  * quantity : PositiveIntegerField, jumlah paket
-  * unit_price : DecimalField, snapshot harga diskon saat pesanan dibuat
-  * total_price : DecimalField, unit_price × quantity
-  * claim_code : CharField (unique), kode klaim 8 karakter yang dibuat otomatis
-  * status : CharField, pilihan `pending`, `completed`, `cancelled`, `expired`
-  * pickup_deadline : DateTimeField, batas waktu penjemputan (dari jam selesai pickup paket)
-  * created_at : DateTimeField, waktu pesanan dibuat
-  * picked_up_at : DateTimeField, waktu pesanan divalidasi kasir
-  * validated_by : ForeignKey(User, null=True), akun Restaurant yang memvalidasi
+* **Model OrderSystem**
+  * `consumer` : Berelasi dengan model User Consumer
+  * `product` : Berelasi dengan model Merchant Product yang dipesan oleh konsumen
+  * `quantity` : Jumlah produk yang dipesan ke dalam keranjang
+  * `unit_price` : Harga produk saat dipesan
+  * `total_price` : Total tagihan konsumen
+  * `payment_status` : Status pembayaran (misalnya: pending, paid, completed, expired)
+  * `payment_qr_id` : ID unik yang disematkan ke dalam SisaBayarQR (Dummy QRIS)
+  * `claim_qr_code` : Kode unik khusus untuk proses penukaran makanan di lokasi
+  * `pickup_deadline` : Batas waktu konsumen untuk mengambil pesanan
+  * `created_at` : Waktu pencatatan pesanan
+* **Model MerchantWallet**
+  * `merchant` : ForeignKey(User), merchant pemilik dompet saldo penjualan
+  * `balance` : DecimalField, total akumulasi saldo hasil klaim pesanan yang siap dicairkan
+  * `updated_at` : DateTimeField, waktu pembaruan saldo terakhir
 
-**Views:**
-*Consumer*
-* claim_create_view(request, inventory_id) : konfirmasi dan pembuatan pesanan, dengan pengurangan stok atomik
-* order_list_view(request) : daftar riwayat pesanan milik consumer
-* order_detail_view(request, pk) : detail pesanan beserta QR Code dan kode klaim
-* order_cancel_view(request, pk) : membatalkan pesanan `pending` dan mengembalikan stok
-
-*Restaurant / Kasir*
-* merchant_order_list_view(request) : daftar pesanan masuk (menunggu diambil) dan riwayat toko
-* validate_order_view(request) : input kode atau scan QR, tampilkan detail pesanan, lalu konfirmasi pengambilan
-
-**Aturan Validasi:**
-* Satu kode hanya bisa divalidasi satu kali
-* Restaurant hanya bisa memvalidasi pesanan untuk paket miliknya sendiri
-* Pesanan yang melewati `pickup_deadline` ditolak dan berstatus `expired`
-* Stok dan status paket (`tersedia` / `habis`) ikut diperbarui saat klaim dan pembatalan
+**Views (Method):**
+* `checkout_view()` : Memproses pembayaran keranjang dan men-generate SisaBayarQR
+  * Auth: Consumer
+* `payment_view()` : Menampilkan halaman rincian instruksi pembayaran SisaBayarQR
+  * Auth: Consumer
+* `payment_status_view()` : Endpoint API JSON untuk pengecekan status pembayaran pesanan secara otomatis (polling)
+  * Auth: Consumer
+* `simulator_bayar_view()` : Membaca unggahan gambar SisaBayarQR dan mengubah status pembayaran menjadi lunas agar sistem mengeluarkan QR Code klaim
+  * Auth: Consumer, Admin
+* `order_list_view()` : Menampilkan riwayat pesanan milik konsumen
+  * Auth: Consumer
+* `merchant_order_list_view()` : Menampilkan daftar pesanan yang harus diselesaikan oleh merchant
+  * Auth: Merchant
+* `validate_claim_view()` : Sistem memvalidasi kecocokan QR Code klaim yang diserahkan konsumen kepada kasir
+  * Auth: Merchant
+* `withdraw_funds_view()` : Memproses merchant yang mengajukan pencairan dana penjualan ke SisaBijak
+  * Auth: Merchant, Admin
 
 **Templates:**
-* claim_form.html : halaman konfirmasi klaim Mystery Box
-* order_list.html : riwayat pesanan consumer
-* order_detail.html : detail pesanan dengan QR Code dan kode klaim
-* merchant_orders.html : dashboard pesanan masuk untuk Restaurant
-* validate_order.html : halaman validasi kode/QR untuk kasir
+* `checkout_payment.html` : Halaman konfirmasi pembayaran yang menampilkan SisaBayarQR (Dummy QRIS)
+* `simulator_bayar.html` : Halaman web rahasia untuk mengunggah gambar SisaBayarQR
+* `order_list.html` : Halaman yang memuat QR Code klaim dan riwayat pesanan konsumen
+* `merchant_orders.html` : Halaman dasbor untuk melihat pesanan masuk di sisi merchant
+* `validate_claim.html` : Halaman bagi kasir merchant untuk memproses dan menyelesaikan pesanan
 
-**Integrasi Antar Modul:**
-* Modul Marketplace & Catalog : tombol "Klaim" mengarah ke `main:checkout_product`
-* Modul Merchant Inventory : membaca dan memperbarui `stok_harian` serta status paket
-* Modul Impact Analytics : `Order` dipakai sebagai relasi `ImpactLog`, dan signal `order_completed` dikirim saat pesanan divalidasi
+---
 
-### 4. Modul Carbon & Food Rescue Impact Analytics
-
+### 4. Modul Consumer Profile
 **Penanggung Jawab** : Khalisha Nalani Chandra
 
 **Deskripsi Fitur:**
-Interactive Gamified Analytics Dashboard & Eco-Impact Tracker untuk memvisualisasikan statistik penyelamatan makanan, mengkalkulasi milestone badges (gamifikasi), dan menampilkan estimasi pengurangan emisi CO₂ secara real-time (via AJAX / External API).
+Modul ini menyediakan dasbor personal bagi konsumen untuk memantau ringkasan aktivitas transaksi yang telah dilakukan. Selain itu, modul ini juga memfasilitasi konsumen untuk mengelola data akun pribadi, memperbarui nomor kontak, dan memperbarui password akun.
 
 **Models:**
-* UserEcoProfile
-  * user : OneToOneField(User), terhubung ke Consumer / Restaurant / Admin
-  * rescue_streak : IntegerField, jumlah hari berturut-turut melakukan aksi rescue
-  * eco_points : IntegerField, poin gamifikasi yang dikumpulkan pengguna
-  * sustainability_tier : CharField, level/gelar pengguna (misal: 'Eco Seed', 'Food Savior', 'Planet Hero')
+* **Model ConsumerProfile**
+  * `user` : Akun Consumer pemilik profil ini
+  * `phone_number` : Nomor telepon akun konsumen
+  * `total_orders_completed` : Jumlah total pesanan yang sudah berhasil diselesaikan konsumen
+  * `total_money_saved` : Total akumulasi uang yang dihemat (selisih harga asli dan diskon)
+  * `total_co2_prevented` : Total akumulasi gas emisi karbon yang berhasil dicegah dari makanan sisa
 
-* ImpactLog
-  * user : ForeignKey(User), pengguna yang melakukan aksi penyelamatan makanan
-  * order : ForeignKey(Order, null=True), relasi ke transaksi Mystery Box yang berhasil diselamatkan
-  * weight_saved_kg : DecimalField, berat total makanan yang diselamatkan (kg)
-  * co2_prevented_kg : DecimalField, hasil kalkulasi reduksi emisi CO₂
-  * tree_equivalent : FloatField, metrik ekivalensi dampak (misal: setara menanam X pohon)
-  * created_at : DateTimeField, catatan waktu transaksi/aksi
+**Views (Method):**
+* `consumer_dashboard_view()` : Menampilkan halaman utama profil beserta statistik uang dihemat dan emisi karbon yang dicegah
+  * Auth: Consumer
+* `edit_profile_view()` : Menampilkan form bagi konsumen untuk mengubah nomor telepon atau sandi
+  * Auth: Consumer
+* `order_history_view()` : Menampilkan seluruh riwayat pesanan (termasuk yang menunggu pembayaran, lunas/siap klaim, dan selesai)
+  * Auth: Consumer
 
-**Views & Endpoints:**
+**Templates:**
+* `consumer_dashboard_view.html` (`consumer_dashboard.html`) : Halaman profil utama yang memuat statistik akun
+* `edit_profile_view.html` (`edit_profile.html`) : Formulir untuk mengedit data diri
+* `order_history_view.html` (`order_history.html`) : Halaman riwayat pesanan tempat pengguna bisa melihat SisaBayarQR atau QR Klaim
 
-* render_impact_hub(request) : menampilkan halaman utama dashboard analitik interaktif berisi visualisasi grafik, progres streak pengguna, dan lencana pencapaian (badges)
-* get_community_impact_stats_json(request) : endpoint JSON publik untuk data agregat komunitas secara real-time (total makanan diselamatkan & total CO₂ yang dicegah seluruh pengguna)
-* get_personal_analytics_json(request) : endpoint JSON terautentikasi untuk data time-series grafik mingguan/bulanan (render via Chart.js / ApexCharts)
+---
 
-**Templates & Components:**
-
-* impact_hub.html : halaman utama dashboard dengan counter animasi, grafik tren Chart.js, dan infografis ekivalensi dampak karbon
-* components/eco_badge_modal.html : modal pop-up untuk merayakan pencapaian level/badge baru pengguna
-* components/impact_summary_widget.html : widget ringkasan dampak pribadi yang reusable, bisa ditempatkan di halaman profil Consumer atau Dashboard Merchant
-  
 ### 5. Modul Merchant Location Integrator
 **Penanggung Jawab** : Ghaisan Nabil Iradat
 
+**Deskripsi Fitur:**
+Modul ini menyajikan peta interaktif untuk membantu konsumen menemukan lokasi restoran, kafe, dan toko roti mitra SisaBijak terdekat secara visual. Pengguna dapat mencari merchant berdasarkan nama toko atau kata kunci alamat serta mengecek titik koordinat lokasi secara presisi. Integrasi ini memudahkan konsumen dalam merencanakan rute penjemputan makanan surplus secara langsung ke gerai merchant.
+
 **Models:**
-* merchant location integrator
-  * id_merchant
-  * name_merchant
-  * address
-  * longitude
-  * latitude
+* **Model MerchantLocationIntegrator**
+  * `id_merchant` : String id unik yang dimiliki setiap merchant
+  * `name_merchant` : String nama merchant
+  * `address` : String alamat merchant
+  * `longitude` : Koordinat bujur merchant
+  * `latitude` : Koordinat lintang merchant
 
-**Views:**
-
-* merchant_location() : Sebagai penghubung, mengambil data untuk rendering
+**Views (Method):**
+* `merchant_location()` : Mengambil data untuk rendering
+  * Auth: Guest, Consumer, Merchant, Admin
 
 **Template:**
-* merchant_loc.html
+* `merchant_loc.html` : Halaman integrasi lokasi peta interaktif merchant
 
-# Roles
-- `Guest`
-- `Consumer`
-- `Restaurant`
-- `Admin`
+---
+
+### 6. Modul Authentication & Authorization
+**Penanggung Jawab** : Jefry Acmal Dzikhrullah
+
+**Deskripsi Fitur:**
+Modul ini menangani sistem pendaftaran akun, autentikasi masuk, dan manajemen sesi login pengguna secara aman. Otorisasi diterapkan berbasis peran (role-based access control) untuk membedakan hak akses dan fungsi antara Guest, Consumer, Merchant, dan Admin. Setiap pengguna diarahkan secara otomatis ke alur kerja dan antarmuka yang sesuai dengan hak akses perannya di dalam platform.
+
+**Models:**
+* **Model UserProfile**
+  * `user` : OneToOneField(User), relasi satu-ke-satu ke model bawaan Django User
+  * `role` : CharField, peran pengguna (`consumer` atau `merchant`)
+* **Base Roles:**
+  * `Guest` : AnonymousUser
+  * `Consumer` : Akun consumer, self register via web
+  * `Merchant` : Akun merchant, register manual by contact Admin
+  * `Admin` : SuperUser
+
+**Views (Method):**
+* `register()` : Registrasi akun baru untuk pengguna bertipe Consumer
+  * Auth: Guest
+* `login_user()` : Autentikasi dan login ke dalam sistem
+  * Auth: Guest, Consumer, Merchant, Admin
+* `logout_user()` : Mengakhiri sesi login pengguna
+  * Auth: Consumer, Merchant, Admin
+* `profile()` / `account_profile_view()` : Mengarahkan pengguna ke halaman profil sesuai peran akun
+  * Auth: Consumer, Merchant, Admin
+
+**Templates:**
+* `register.html` : Formulir pendaftaran akun consumer baru
+* `login.html` : Formulir masuk ke dalam sistem
+* `logout.html` : Halaman konfirmasi / redirect keluar akun
+* `profile.html` : Halaman profil pengguna / akun
+
+---
+
+### 7. Modul Landing Page & Base Platform
+**Penanggung Jawab** : Ghaisan Nabil Iradat
+
+**Deskripsi Fitur:**
+Modul ini berfungsi sebagai gerbang utama platform SisaBijak. Halaman ini menyajikan penawaran makanan surplus harian (daily deals) dengan diskon terbesar serta cuplikan peta gerai mitra terdekat. Selain itu, modul ini menyediakan kerangka tata letak (base layout) dan navigasi sesuai dengan role pengguna.
+
+**Models:**
+* Mengintegrasikan data dari:
+  * `MerchantProduct` : Mengambil produk berstatus *Available* dengan potongan harga tertinggi untuk ditampilkan pada section *daily deals*.
+  * `MerchantLocationIntegrator` : Mengambil data koordinat dan alamat toko mitra untuk ditampilkan pada peta interaktif Leaflet.
+
+**Views (Method):**
+* `show_main()` : Menyiapkan dan menampilkan halaman utama landing page lengkap dengan daftar deals surplus, statistik ticker, dan data merchant terdekat
+  * Auth: Guest, Consumer, Merchant, Admin
+
+**Templates:**
+* `index.html` : Halaman depan / landing page interaktif SisaBijak
+* `base.html` : Kerangka layout dasar (navbar adaptif sesuai role pengguna, area pesan notifikasi/flash, dan footer)
+
+---
 
 # Pembagian Job Desk
--`Mystery Box Marketplace & Catalog` : Debora Putri Dion Simamora
--`Merchant Inventory & Pickup Manager` : Jefry Acmal Dzikhrullah
--`Order Validation & Claim System` : Rafael Darius Sagala
--`Carbon & Food Rescue Impact Analytics` : Khalisha Nalani Chandra
--`Merchant Location Integrator` : Ghaisan Nabil Iradat
+- `Project Manager`: Jefry Acmal Dzikhrullah
+- `Modul Catalog` : Debora Putri Dion Simamora
+- `Seeding data merchant & product` : Debora Putri Dion Simamora
+- `Modul Order System` : Rafael Darius Sagala
+- `Dummy Payment Gateway` : Rafael Darius Sagala
+- `Modul Merchant Product` : Jefry Acmal Dzikhrullah
+- `Authentication & Authorization` : Jefry Acmal Dzikhrullah
+- `Modul Merchant Location Integrator` : Ghaisan Nabil Iradat
+- `Landing Page & Base Platform` : Ghaisan Nabil Iradat
+- `Modul Consumer Profile` : Khalisha Nalani Chandra
+- `Web Design Coordinator` : Khalisha Nalani Chandra
 
+# Tautan
+- Web Deployment: [SisaBijak Websites](https://jefry-acmal-sisabijak.pws.cs.ui.ac.id/)
+- Design Figma: [SisaBijak Web Design](-)

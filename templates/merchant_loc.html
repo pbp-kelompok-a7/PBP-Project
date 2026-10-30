@@ -1,334 +1,181 @@
-{% extends 'base.html' %}
 {% load static %}
 {% load l10n %}
+<main class="loc-page loc-stack" id="maps">
 
-{% block title %}Peta Merchant - SisaBijak{% endblock title %}
-
-{# base.html menyediakan block "meta" di <head>; Leaflet CSS wajib dimuat di sini #}
-{% block meta %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-{% endblock meta %}
-
-{% block content %}
-<section class="figma-feature-section" id="maps">
-    <div class="figma-layout-grid">
-
-        <div class="figma-map-card">
-            <button type="button" id="btn-user-location" class="figma-location-pill" title="Klik untuk mendeteksi lokasi saat ini">
-                <svg class="figma-dropdown-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path d="M7 10l5 5 5-5H7z"/>
-                </svg>
-                <span id="location-status-text">Location : Depok</span>
-            </button>
-
-            <div class="figma-map-container">
-                <div class="gmap-type-toggle">
-                    <button type="button" id="btn-map-road" class="gmap-toggle-btn active">Map</button>
-                    <button type="button" id="btn-map-sat" class="gmap-toggle-btn">Satellite</button>
-                </div>
-
-                <div id="merchant-map"></div>
-            </div>
+    <aside class="loc-map-panel">
+        <div class="loc-location-pill">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11z"/>
+                <circle cx="12" cy="10" r="2.5"/>
+            </svg>
+            <span class="loc-label" id="loc-label">Lokasi: {{ location_label|default:"Depok, Jawa Barat" }}</span>
+            <button type="button" id="btn-my-location" class="loc-change">Lokasi saya</button>
         </div>
+        <div id="merchant-map"></div>
+    </aside>
 
-        <div class="figma-right-column">
+    <div class="loc-lists">
 
-            <div class="figma-subsection">
-                <div class="figma-section-badge">
-                    <h3>PAYDEAL !!!! &nbsp;diskon or else like 80%</h3>
-                </div>
+        <section aria-labelledby="deals-title">
+            <h2 class="loc-heading" id="deals-title">Diskon Hari Ini</h2>
+            <div class="loc-row loc-row--deals">
+                {% for p in deals %}
+                    <article class="deal-card">
+                        <div class="deal-media">
+                            <span class="deal-placeholder">Foto paket</span>
+                            {% if p.discount_rate %}
+                                <span class="badge badge-discount">-{{ p.discount_rate|floatformat:"0" }}%</span>
+                            {% endif %}
+                            {% if p.product_stock <= 3 %}
+                                <span class="badge badge-stock is-low">Sisa {{ p.product_stock }}</span>
+                            {% else %}
+                                <span class="badge badge-stock">Sisa {{ p.product_stock }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="deal-body">
+                            <div class="deal-meta"><span>{{ p.merchant_name }}</span></div>
+                            <h3>{{ p.product_name }}</h3>
+                            <div class="deal-price">
+                                <strong>Rp{{ p.discount_price|floatformat:"0g" }}</strong>
+                                {% if p.discount_rate %}<s>Rp{{ p.real_price|floatformat:"0g" }}</s>{% endif %}
+                            </div>
+                            <p class="deal-pickup">🕒 Ambil {{ p.start_pickup|date:"j M, H:i" }} – {{ p.end_pickup|date:"H:i" }}</p>
+                            <p class="deal-rating">Belum ada ulasan</p>
+                            <a class="deal-btn" href="{% url 'catalog:catalog_detail' p.product_id %}">Lihat Detail</a>
+                        </div>
+                    </article>
+                {% empty %}
+                    <p style="margin:0; color:#6b7280;">Belum ada paket diskon hari ini.</p>
+                {% endfor %}
+                {% for i in deal_placeholders %}
+                    <article class="deal-card deal-card--empty" aria-hidden="true">
+                        <div class="deal-media">
+                            <span class="deal-placeholder">Segera hadir</span>
+                        </div>
+                        <div class="deal-body">
+                            <h3>Belum ada paket</h3>
+                            <p class="deal-rating">Paket baru dari merchant akan muncul di sini.</p>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
 
-                <div class="figma-cards-row">
-                    {% for merchant in merchants %}
-                        <article
-                            class="figma-deal-card merchant-item"
-                            data-id="{{ merchant.id_merchant }}"
-                            data-name="{{ merchant.name_merchant }}"
-                            data-address="{{ merchant.address }}"
-                            data-lat="{{ merchant.latitude|unlocalize }}"
-                            data-lng="{{ merchant.longitude|unlocalize }}"
-                        >
-                            <div class="figma-card-thumb"></div>
-                            <div class="figma-card-body">
-                                <div class="figma-card-meta">
-                                    <span class="figma-merchant-name">{{ merchant.name_merchant }}</span>
-                                    <span class="figma-distance-text">-- km</span>
+            <div class="loc-more">
+                <a class="deal-btn" href="/catalog/">View More &rarr;</a>
+            </div>
+        </section>
+
+        <section aria-labelledby="nearby-title">
+            <h2 class="loc-heading" id="nearby-title">Restoran</h2>
+            <div class="loc-row">
+                {% with merchant_list=nearby %}
+                    {% for m in merchant_list %}
+                        <article class="deal-card"
+                                 data-merchant="{{ m.id_merchant }}"
+                                 data-name="{{ m.name_merchant }}"
+                                 data-address="{{ m.address }}"
+                                 data-lat="{{ m.latitude|unlocalize }}"
+                                 data-lng="{{ m.longitude|unlocalize }}">
+                            <div class="deal-media">
+                                <span class="deal-placeholder">Foto restoran</span>
+                                {% if m.active_packages %}
+                                    <span class="badge badge-stock">{{ m.active_packages }} paket tersedia</span>
+                                {% else %}
+                                    <span class="badge badge-stock is-out">Belum ada paket</span>
+                                {% endif %}
+                            </div>
+                            <div class="deal-body">
+                                <div class="deal-meta">
+                                    <span>{{ m.address|truncatechars:28 }}</span>
+                                    {% if m.distance_km is not None %}
+                                        <span class="js-distance">{{ m.distance_km|floatformat:1 }} km</span>
+                                    {% else %}
+                                        <span class="js-distance">-- km</span>
+                                    {% endif %}
                                 </div>
-                                <h4 class="figma-item-title">{{ merchant.address|truncatechars:26 }}</h4>
-                                <div class="figma-price-row">
-                                    <span class="figma-price-now">Rp15.000</span>
-                                    <span class="figma-price-old">Rp40.000</span>
-                                </div>
-                                <p class="figma-rating-text">4.8 / 5 &middot; 32 reviews</p>
-                                <button type="button" class="figma-btn-details">View Details</button>
+                                <h3>{{ m.name_merchant }}</h3>
+                                <a class="deal-btn"
+                                   href="https://www.google.com/maps/dir/?api=1&destination={{ m.address|urlencode }}"
+                                   target="_blank" rel="noopener noreferrer">Petunjuk Jalan</a>
                             </div>
                         </article>
                     {% empty %}
-                        {# Data contoh, hanya tampil bila belum ada merchant di database #}
-                        <article class="figma-deal-card merchant-item" data-id="m1" data-name="Roti Kita Bakery" data-address="Jl. Margonda Raya No. 12, Depok" data-lat="-6.362764" data-lng="106.834572">
-                            <div class="figma-card-thumb"></div>
-                            <div class="figma-card-body">
-                                <div class="figma-card-meta">
-                                    <span class="figma-merchant-name">Roti Kita Bakery</span>
-                                    <span class="figma-distance-text">-- km</span>
-                                </div>
-                                <h4 class="figma-item-title">Roti Pilihan</h4>
-                                <div class="figma-price-row">
-                                    <span class="figma-price-now">Rp15.000</span>
-                                    <span class="figma-price-old">Rp40.000</span>
-                                </div>
-                                <p class="figma-rating-text">4.8 / 5 &middot; 32 reviews</p>
-                                <button type="button" class="figma-btn-details">View Details</button>
+                        {# Data contoh dari preview.html bila database merchant masih kosong #}
+                        <article class="deal-card" data-merchant="r1" data-name="Kopi Senja Cafe" data-address="Jl. Beji Timur No. 3, Depok" data-lat="-6.3775" data-lng="106.8215">
+                            <div class="deal-media">
+                                <span class="deal-placeholder">Foto restoran</span>
+                                <span class="badge badge-stock">3 paket tersedia</span>
+                            </div>
+                            <div class="deal-body">
+                                <div class="deal-meta"><span>Jl. Beji Timur No. 3, Depok</span><span class="js-distance">0.8 km</span></div>
+                                <h3>Kopi Senja Cafe</h3>
+                                <a class="deal-btn"
+                                   href="https://www.google.com/maps/dir/?api=1&destination=-6.3775,106.8215"
+                                   target="_blank" rel="noopener noreferrer">Petunjuk Jalan</a>
                             </div>
                         </article>
 
-                        <article class="figma-deal-card merchant-item" data-id="m2" data-name="Jus Sehat" data-address="Jl. Akses UI Kelapa Dua, Depok" data-lat="-6.355120" data-lng="106.841210">
-                            <div class="figma-card-thumb"></div>
-                            <div class="figma-card-body">
-                                <div class="figma-card-meta">
-                                    <span class="figma-merchant-name">Jus Sehat</span>
-                                    <span class="figma-distance-text">-- km</span>
-                                </div>
-                                <h4 class="figma-item-title">5 Jus Pilihan</h4>
-                                <div class="figma-price-row">
-                                    <span class="figma-price-now">Rp10.000</span>
-                                    <span class="figma-price-old">Rp20.000</span>
-                                </div>
-                                <p class="figma-rating-text">4.5 / 5 &middot; 14 reviews</p>
-                                <button type="button" class="figma-btn-details">View Details</button>
+                        <article class="deal-card" data-merchant="r2" data-name="Sweet Crumbs" data-address="Jl. Haji Asmawi No. 8, Depok" data-lat="-6.3772" data-lng="106.8148">
+                            <div class="deal-media">
+                                <span class="deal-placeholder">Foto restoran</span>
+                                <span class="badge badge-stock">1 paket tersedia</span>
+                            </div>
+                            <div class="deal-body">
+                                <div class="deal-meta"><span>Jl. Haji Asmawi No. 8, Depok</span><span class="js-distance">1.2 km</span></div>
+                                <h3>Sweet Crumbs</h3>
+                                <a class="deal-btn"
+                                   href="https://www.google.com/maps/dir/?api=1&destination=-6.3722,106.8148"
+                                   target="_blank" rel="noopener noreferrer">Petunjuk Jalan</a>
                             </div>
                         </article>
 
-                        <article class="figma-deal-card merchant-item" data-id="m3" data-name="Kopi Senja Depok" data-address="Jl. Kukusan Teknik UI, Depok" data-lat="-6.368410" data-lng="106.821450">
-                            <div class="figma-card-thumb"></div>
-                            <div class="figma-card-body">
-                                <div class="figma-card-meta">
-                                    <span class="figma-merchant-name">Kopi Senja Depok</span>
-                                    <span class="figma-distance-text">-- km</span>
-                                </div>
-                                <h4 class="figma-item-title">Pastry Box</h4>
-                                <div class="figma-price-row">
-                                    <span class="figma-price-now">Rp12.000</span>
-                                    <span class="figma-price-old">Rp30.000</span>
-                                </div>
-                                <p class="figma-rating-text">4.7 / 5 &middot; 21 reviews</p>
-                                <button type="button" class="figma-btn-details">View Details</button>
+                        <article class="deal-card" data-merchant="r3" data-name="Dapur Hijau" data-address="Jl. Sawo No. 21, Depok" data-lat="-6.3642" data-lng="106.8325">
+                            <div class="deal-media">
+                                <span class="deal-placeholder">Foto restoran</span>
+                                <span class="badge badge-stock is-out">Belum ada paket</span>
                             </div>
-                        </article>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <div class="figma-subsection">
-                <div class="figma-section-badge">
-                    <h3>Restoran Terdekat</h3>
-                </div>
-
-                <div class="figma-cards-row">
-                    {% for merchant in merchants %}
-                        <article
-                            class="figma-deal-card figma-nearby-card merchant-item"
-                            data-id="{{ merchant.id_merchant }}"
-                            data-name="{{ merchant.name_merchant }}"
-                            data-address="{{ merchant.address }}"
-                            data-lat="{{ merchant.latitude|unlocalize }}"
-                            data-lng="{{ merchant.longitude|unlocalize }}"
-                        >
-                            <div class="figma-card-thumb figma-thumb-tall"></div>
-                            <div class="figma-card-body">
-                                <div class="figma-card-meta">
-                                    <span class="figma-merchant-name">{{ merchant.name_merchant }}</span>
-                                    <span class="figma-distance-text">-- km</span>
-                                </div>
-                                <h4 class="figma-item-title">{{ merchant.address|truncatechars:26 }}</h4>
-                                <p class="figma-rating-text">4.8 / 5 &middot; 32 reviews</p>
-                                <button type="button" class="figma-btn-details">View Details</button>
-                            </div>
-                        </article>
-                    {% empty %}
-                        {# Data contoh, hanya tampil bila belum ada merchant di database #}
-                        <article class="figma-deal-card figma-nearby-card merchant-item" data-id="m1" data-name="Roti Kita Bakery" data-address="Jl. Margonda Raya No. 12, Depok" data-lat="-6.362764" data-lng="106.834572">
-                            <div class="figma-card-thumb figma-thumb-tall"></div>
-                            <div class="figma-card-body">
-                                <div class="figma-card-meta">
-                                    <span class="figma-merchant-name">Roti Kita Bakery</span>
-                                    <span class="figma-distance-text">-- km</span>
-                                </div>
-                                <h4 class="figma-item-title">Jl. Margonda Raya No. 12</h4>
-                                <p class="figma-rating-text">4.8 / 5 &middot; 32 reviews</p>
-                                <button type="button" class="figma-btn-details">View Details</button>
+                            <div class="deal-body">
+                                <div class="deal-meta"><span>Jl. Sawo No. 21, Depok</span><span class="js-distance">2.4 km</span></div>
+                                <h3>Dapur Hijau</h3>
+                                <a class="deal-btn"
+                                   href="https://www.google.com/maps/dir/?api=1&destination=-6.3642,106.8325"
+                                   target="_blank" rel="noopener noreferrer">Petunjuk Jalan</a>
                             </div>
                         </article>
 
-                        <article class="figma-deal-card figma-nearby-card merchant-item" data-id="m2" data-name="Jus Sehat" data-address="Jl. Akses UI Kelapa Dua, Depok" data-lat="-6.355120" data-lng="106.841210">
-                            <div class="figma-card-thumb figma-thumb-tall"></div>
-                            <div class="figma-card-body">
-                                <div class="figma-card-meta">
-                                    <span class="figma-merchant-name">Jus Sehat</span>
-                                    <span class="figma-distance-text">-- km</span>
-                                </div>
-                                <h4 class="figma-item-title">Jl. Akses UI Kelapa Dua</h4>
-                                <p class="figma-rating-text">4.5 / 5 &middot; 14 reviews</p>
-                                <button type="button" class="figma-btn-details">View Details</button>
+                        <article class="deal-card" data-merchant="r4" data-name="Bakeri Margonda" data-address="Jl. Margonda Raya No. 99, Depok" data-lat="-6.3820" data-lng="106.8302">
+                            <div class="deal-media">
+                                <span class="deal-placeholder">Foto restoran</span>
+                                <span class="badge badge-stock">2 paket tersedia</span>
+                            </div>
+                            <div class="deal-body">
+                                <div class="deal-meta"><span>Jl. Margonda Raya No. 99, Depok</span><span class="js-distance">2.4 km</span></div>
+                                <h3>Bakeri Margonda</h3>
+                                <a class="deal-btn"
+                                   href="https://www.google.com/maps/dir/?api=1&destination=-6.3820,106.8302"
+                                   target="_blank" rel="noopener noreferrer">Petunjuk Jalan</a>
                             </div>
                         </article>
 
-                        <article class="figma-deal-card figma-nearby-card merchant-item" data-id="m3" data-name="Kopi Senja Depok" data-address="Jl. Kukusan Teknik UI, Depok" data-lat="-6.368410" data-lng="106.821450">
-                            <div class="figma-card-thumb figma-thumb-tall"></div>
-                            <div class="figma-card-body">
-                                <div class="figma-card-meta">
-                                    <span class="figma-merchant-name">Kopi Senja Depok</span>
-                                    <span class="figma-distance-text">-- km</span>
-                                </div>
-                                <h4 class="figma-item-title">Jl. Kukusan Teknik UI</h4>
-                                <p class="figma-rating-text">4.7 / 5 &middot; 21 reviews</p>
-                                <button type="button" class="figma-btn-details">View Details</button>
+                        <article class="deal-card" data-merchant="r5" data-name="Warung Rasa" data-address="Jl. Beji Timur No. 3, Depok" data-lat="-6.3688" data-lng="106.8180">
+                            <div class="deal-media">
+                                <span class="deal-placeholder">Foto restoran</span>
+                                <span class="badge badge-stock">5 paket tersedia</span>
+                            </div>
+                            <div class="deal-body">
+                                <div class="deal-meta"><span>Jl. Beji Timur No. 3, Depok</span><span class="js-distance">2.4 km</span></div>
+                                <h3>Warung Rasa</h3>
+                                <a class="deal-btn"
+                                   href="https://www.google.com/maps/dir/?api=1&destination=-6.3688,106.8180"
+                                   target="_blank" rel="noopener noreferrer">Petunjuk Jalan</a>
                             </div>
                         </article>
                     {% endfor %}
-                </div>
+                {% endwith %}
             </div>
+        </section>
 
-        </div>
     </div>
-</section>
-{% endblock content %}
+</section>  
 
-{% block extra_js %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        var mapEl = document.getElementById("merchant-map");
-        if (!mapEl) return;
-
-        // Titik acuan jarak: default Depok, berubah setelah tombol lokasi ditekan
-        var userLat = -6.362764;
-        var userLng = 106.827049;
-        var userMarker = null;
-
-        var map = L.map("merchant-map", { zoomControl: false }).setView([userLat, userLng], 14);
-        L.control.zoom({ position: "topright" }).addTo(map);
-
-        var roadLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-            maxZoom: 19,
-            attribution: "&copy; OpenStreetMap contributors"
-        }).addTo(map);
-
-        var satLayer = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-            maxZoom: 19,
-            attribution: "Tiles &copy; Esri"
-        });
-
-        var btnRoad = document.getElementById("btn-map-road");
-        var btnSat = document.getElementById("btn-map-sat");
-        if (btnRoad && btnSat) {
-            btnRoad.addEventListener("click", function () {
-                btnRoad.classList.add("active");
-                btnSat.classList.remove("active");
-                if (map.hasLayer(satLayer)) map.removeLayer(satLayer);
-                map.addLayer(roadLayer);
-            });
-            btnSat.addEventListener("click", function () {
-                btnSat.classList.add("active");
-                btnRoad.classList.remove("active");
-                if (map.hasLayer(roadLayer)) map.removeLayer(roadLayer);
-                map.addLayer(satLayer);
-            });
-        }
-
-        // Escape teks dari database sebelum dimasukkan ke popup (cegah XSS)
-        function esc(text) {
-            var d = document.createElement("div");
-            d.textContent = text == null ? "" : text;
-            return d.innerHTML;
-        }
-
-        function calcDistanceKm(lat1, lon1, lat2, lon2) {
-            var R = 6371;
-            var dLat = (lat2 - lat1) * Math.PI / 180;
-            var dLon = (lon2 - lon1) * Math.PI / 180;
-            var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))).toFixed(1);
-        }
-
-        var markersMap = {};
-        var bounds = [];
-        var cards = document.querySelectorAll(".merchant-item");
-
-        function updateDistances() {
-            cards.forEach(function (card) {
-                var lat = parseFloat((card.getAttribute("data-lat") || "").replace(",", "."));
-                var lng = parseFloat((card.getAttribute("data-lng") || "").replace(",", "."));
-                var distEl = card.querySelector(".figma-distance-text");
-                if (distEl && !isNaN(lat) && !isNaN(lng)) {
-                    distEl.textContent = calcDistanceKm(userLat, userLng, lat, lng) + " km";
-                }
-            });
-        }
-
-        cards.forEach(function (card) {
-            var id = card.getAttribute("data-id");
-            var name = card.getAttribute("data-name") || "";
-            var address = card.getAttribute("data-address") || "";
-            var lat = parseFloat((card.getAttribute("data-lat") || "").replace(",", "."));
-            var lng = parseFloat((card.getAttribute("data-lng") || "").replace(",", "."));
-            if (isNaN(lat) || isNaN(lng)) return;
-
-            if (!markersMap[id]) {
-                var marker = L.marker([lat, lng]).addTo(map);
-                marker.bindPopup(
-                    "<strong>" + esc(name) + "</strong><br>" +
-                    "<small>" + esc(address) + "</small><br>" +
-                    "<a href='https://www.google.com/maps/dir/?api=1&destination=" + lat + "," + lng +
-                    "' target='_blank' rel='noopener noreferrer'>Buka Rute Google Maps &rarr;</a>"
-                );
-                markersMap[id] = marker;
-                bounds.push([lat, lng]);
-            }
-
-            card.addEventListener("click", function () {
-                map.setView([lat, lng], 16, { animate: true });
-                if (markersMap[id]) markersMap[id].openPopup();
-            });
-        });
-
-        updateDistances();
-
-        if (bounds.length > 0) {
-            map.fitBounds(bounds, { padding: [35, 35], maxZoom: 15 });
-        }
-
-        var locBtn = document.getElementById("btn-user-location");
-        var locText = document.getElementById("location-status-text");
-        if (locBtn) {
-            locBtn.addEventListener("click", function () {
-                if (!navigator.geolocation) {
-                    locText.textContent = "Location : Browser tidak mendukung";
-                    return;
-                }
-                locText.textContent = "Location : Mendeteksi lokasi...";
-                navigator.geolocation.getCurrentPosition(
-                    function (pos) {
-                        userLat = pos.coords.latitude;
-                        userLng = pos.coords.longitude;
-                        locText.textContent = "Location : Lokasi Saya Saat Ini";
-                        map.setView([userLat, userLng], 15);
-
-                        if (userMarker) map.removeLayer(userMarker);
-                        userMarker = L.circleMarker([userLat, userLng], {
-                            radius: 8, fillColor: "#2563eb", color: "#fff", weight: 2, fillOpacity: 0.9
-                        }).addTo(map).bindPopup("<b>Lokasi Anda</b>");
-
-                        updateDistances();   // hitung ulang jarak dari posisi baru
-                    },
-                    function () {
-                        locText.textContent = "Location : Depok";
-                    }
-                );
-            });
-        }
-    });
-</script>
-{% endblock extra_js %}
+{{ merchants_data|json_script:"merchants-data-json" }}

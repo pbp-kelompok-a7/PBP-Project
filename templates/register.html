@@ -3,24 +3,103 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <title>Register — SisaBijak</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet"
+    >
+
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/tailwind-pages.css' %}">
 </head>
 
-<body class="auth-body">
-    <main class="login-page">
-        <a class="back-home" href="{% url 'main:show_main' %}">
+<body class="auth-body login-reference-page register-reference-page">
+
+    <!-- Shared navigation -->
+    <header class="auth-navbar">
+        <a
+            href="{% url 'main:show_main' %}"
+            class="auth-brand"
+            aria-label="SisaBijak Home"
+        >
+            <img
+                src="{% static 'img/tinysisabijaklogo.png' %}"
+                alt="SisaBijak"
+                class="auth-brand-logo"
+            >
+        </a>
+
+        <form
+            class="auth-search"
+            role="search"
+            method="get"
+            action="{% url 'catalog:catalog_list' %}"
+        >
+            <span class="auth-search-icon" aria-hidden="true">
+                <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                >
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <path d="m20 20-4-4"></path>
+                </svg>
+            </span>
+
+            <input
+                type="search"
+                name="q"
+                placeholder="Search here"
+                aria-label="Search food"
+            >
+        </form>
+
+        <nav class="auth-nav-actions" aria-label="Authentication">
+            <a href="{% url 'main:login' %}" class="auth-nav-login">
+                Login
+            </a>
+
+            <a
+                href="{% url 'main:register' %}"
+                class="auth-nav-register"
+                aria-current="page"
+            >
+                Register
+            </a>
+        </nav>
+    </header>
+
+    <main class="login-page register-page">
+
+        <a
+            class="back-home"
+            href="{% url 'main:show_main' %}"
+        >
             ← Back to Home
         </a>
 
-        <section class="login-card register-card">
+        {% if messages %}
+            <div class="register-messages">
+                {% for message in messages %}
+                    <p class="register-message">{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <section class="login-card register-card" aria-labelledby="register-title">
+
             <p class="login-eyebrow">Join the movement</p>
-            <h1>Buat Akun</h1>
+
+            <h1 id="register-title">Buat Akun</h1>
+
             <p class="login-description">
                 Mulai selamatkan makanan dan beri dampak baik untuk bumi.
             </p>
@@ -29,27 +108,39 @@
                 {% csrf_token %}
 
                 {% if form.non_field_errors %}
-                    <div class="form-errors">
+                    <div class="form-errors" role="alert">
                         {{ form.non_field_errors }}
                     </div>
                 {% endif %}
 
                 {% for field in form %}
                     <div class="form-field">
-                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+
+                        <label for="{{ field.id_for_label }}">
+                            {{ field.label }}
+                        </label>
+
                         {{ field }}
 
                         {% if field.help_text %}
-                            <small class="field-help">{{ field.help_text|safe }}</small>
+                            <div class="field-help">
+                                {{ field.help_text|safe }}
+                            </div>
                         {% endif %}
 
                         {% if field.errors %}
-                            <div class="form-errors">{{ field.errors }}</div>
+                            <div class="form-errors" role="alert">
+                                {{ field.errors }}
+                            </div>
                         {% endif %}
+
                     </div>
                 {% endfor %}
 
-                <button type="submit" class="btn btn-dark login-button">
+                <button
+                    type="submit"
+                    class="btn btn-dark login-button"
+                >
                     Register
                 </button>
             </form>
@@ -58,7 +149,10 @@
                 Sudah punya akun?
                 <a href="{% url 'main:login' %}">Login di sini</a>
             </p>
+
         </section>
+
     </main>
+
 </body>
 </html>

@@ -78,7 +78,13 @@ class MerchantProduct(models.Model):
         choices=ProductStatus.choices,
         default=ProductStatus.AVAILABLE,
     )
-    real_price = models.DecimalField(max_digits=12, decimal_places=2)
+    real_price = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2, 
+        validators=[
+                    MinValueValidator(Decimal("0")),
+                ]
+    )
     discount_rate = models.DecimalField(
         max_digits=5,
         decimal_places=2,
@@ -90,6 +96,11 @@ class MerchantProduct(models.Model):
     start_pickup = models.DateTimeField()
     end_pickup = models.DateTimeField()
     address = models.CharField(max_length=255, blank=True)
+    product_photo = models.FileField(
+        upload_to="products/",
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -169,6 +180,23 @@ class MerchantProduct(models.Model):
                 return location_address
 
         return self.address
+
+    @property
+    def photo_url(self):
+        if self.product_photo:
+            try:
+                return self.product_photo.url
+            except Exception:
+                return ""
+        return ""
+
+    @property
+    def photo(self):
+        return self.product_photo
+
+    @property
+    def image(self):
+        return self.product_photo
 
 
 class OrderSystem(models.Model):
@@ -262,14 +290,15 @@ class OrderSystem(models.Model):
             and timezone.now() >= self.pickup_deadline
         )
 
-    def mark_paid(self):
+    def mark_paid(self, create_claim_qr=True):
         if self.payment_status != self.PaymentStatus.PENDING:
             raise ValidationError("Hanya pesanan pending yang dapat dibayar.")
         if self.is_payment_expired:
             raise ValidationError("Waktu pembayaran pesanan sudah habis.")
 
         self.payment_status = self.PaymentStatus.PAID
-        self.claim_qr_code = generate_claim_qr_code()
+        if create_claim_qr:
+            self.claim_qr_code = generate_claim_qr_code()
         self.save(update_fields=("payment_status", "claim_qr_code"))
 
 

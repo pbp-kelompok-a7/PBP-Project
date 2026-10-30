@@ -1,11 +1,15 @@
 import base64
+import hmac
+import zlib
 from datetime import timedelta
 from decimal import Decimal
 from io import BytesIO
 
 import qrcode
-import zxingcpp
-from PIL import Image, UnidentifiedImageError
+try:
+    from qrcode.image.pure import PyPNGImage
+except ImportError:
+    PyPNGImage = None
 
 from django.contrib import messages
 from django.contrib.auth import login, logout, update_session_auth_hash
@@ -25,7 +29,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
-from django.db.models import Q
+from django.db.models import Q, ProtectedError
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from django.views.decorators.http import (
@@ -49,10 +53,67 @@ from .models import (
 
 PAYMENT_QR_SALT = "orders.payment"
 PAYMENT_QR_PREFIX = "SISABIJAK-PAY:"
+PAYMENT_PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+PAYMENT_PNG_MARKER = b"SisaBijakPayment\x00"
 
 @never_cache
 def show_main(request):
-    return render(request, "index.html")
+    merchants_qs = MerchantLocationIntegrator.objects.all()
+    merchants_data = [
+        {
+            "id_merchant": str(m.id_merchant),
+            "name_merchant": m.name_merchant,
+            "address": m.address,
+            "latitude": float(m.latitude),
+            "longitude": float(m.longitude),
+        }
+        for m in merchants_qs
+        if m.latitude is not None and m.longitude is not None
+    ]
+
+    nearby_list = list(merchants_qs)
+
+    if not nearby_list:
+        nearby_dict = {}
+        for p in MerchantProduct.objects.select_related("merchant").all():
+            m_name = getattr(p, "merchant_name", None) or p.merchant.username
+            addr = getattr(p, "address", "")
+            key = f"{m_name}_{addr}"
+
+            entry = nearby_dict.setdefault(
+                key,
+                {
+                    "id_merchant": f"m-{len(nearby_dict) + 1}",
+                    "name_merchant": m_name,
+                    "address": addr,
+                    "active_packages": 0,
+                },
+            )
+
+            stock = getattr(p, "product_stock", 0) or 0
+            if stock > 0:
+                entry["active_packages"] += 1
+
+        nearby_list = list(nearby_dict.values())
+
+    deals = (
+        MerchantProduct.objects
+        .filter(
+            product_status=MerchantProduct.Status.AVAILABLE,
+            product_stock__gt=0,
+            end_pickup__gt=timezone.now(),
+        )
+        .select_related("merchant")
+        .order_by("-discount_rate", "start_pickup")[:4]
+    )
+
+    context = {
+        "deals": deals,
+        "deal_placeholders": range(4 - len(deals)),
+        "nearby": nearby_list,
+        "merchants_data": merchants_data,
+    }
+    return render(request, "index.html", context)
 
 
 def register(request):
@@ -96,6 +157,11 @@ def profile(request):
 
     return render(request, "profile.html")
 
+def account_profile_view(request):
+    if not request.user.is_authenticated:
+        return redirect("main:login")
+
+    return render(request, "profile.html")
 @never_cache
 def logout_user(request):
     if request.method == "POST":
@@ -195,6 +261,46 @@ def _payment_data(orders):
     }
 
 
+def _checkout_reference(payment_qr_id):
+    prefix, separator, line = payment_qr_id.rpartition("-")
+    if separator and prefix.startswith("SBPAY-") and len(prefix) == 18 and line.isdigit():
+        return prefix
+    return payment_qr_id
+
+
+def _store_claim_key(order):
+    return _checkout_reference(order.payment_qr_id), order.product.merchant_id
+
+
+def _store_claim_orders(order, lock=False):
+    """Orders for one merchant in the checkout that issued this claim code."""
+    orders = OrderSystem.objects.select_related("consumer", "product").filter(
+        consumer_id=order.consumer_id,
+        product__merchant_id=order.product.merchant_id,
+    )
+    reference = _checkout_reference(order.payment_qr_id)
+    if reference != order.payment_qr_id:
+        orders = orders.filter(payment_qr_id__startswith=reference + "-")
+    else:
+        orders = orders.filter(pk=order.pk)
+    if lock:
+        orders = orders.select_for_update(of=("self",))
+    return list(orders.order_by("pk"))
+
+
+def _claim_qr_image(code):
+    image = BytesIO()
+    try:
+        if PyPNGImage is not None:
+            qrcode.make(code, image_factory=PyPNGImage).save(image)
+        else:
+            raise ImportError
+    except (ImportError, Exception):
+        img = qrcode.make(code)
+        img.save(image, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(image.getvalue()).decode()
+
+
 def _payment_context(orders):
     statuses = {item.payment_status for item in orders}
     if OrderSystem.PaymentStatus.EXPIRED in statuses:
@@ -215,24 +321,67 @@ def _payment_context(orders):
     }
 
 
+def _payment_png(token):
+    """Create the downloadable QR with its signed payload in a PNG text chunk."""
+    image = BytesIO()
+    try:
+        if PyPNGImage is not None:
+            qrcode.make(PAYMENT_QR_PREFIX + token, image_factory=PyPNGImage).save(image)
+        else:
+            raise ImportError
+    except (ImportError, Exception):
+        img = qrcode.make(PAYMENT_QR_PREFIX + token)
+        img.save(image, format="PNG")
+    png_data = image.getvalue()
+    chunk_type = b"tEXt"
+    chunk_data = PAYMENT_PNG_MARKER + token.encode("ascii")
+    checksum = zlib.crc32(chunk_type + chunk_data).to_bytes(4, "big")
+    chunk = (
+        len(chunk_data).to_bytes(4, "big")
+        + chunk_type
+        + chunk_data
+        + checksum
+    )
+    return png_data[:-12] + chunk + png_data[-12:]
+
+
 def _read_payment_qr(upload):
+    """Accept only the original PNG generated for a signed SisaBayarQR."""
     if upload.size > 5 * 1024 * 1024:
         raise ValidationError("Ukuran gambar maksimal 5 MB.")
     try:
         upload.seek(0)
-        with Image.open(upload) as picture:
-            if picture.format not in ("PNG", "JPEG", "WEBP") or picture.width * picture.height > 16000000:
-                raise ValidationError("Gunakan gambar PNG, JPG, atau WebP maksimal 16 megapiksel.")
-            codes = zxingcpp.read_barcodes(
-                picture.convert("RGB"), formats=zxingcpp.BarcodeFormat.QRCode
-            )
-        if len(codes) != 1 or not codes[0].text.startswith(PAYMENT_QR_PREFIX):
-            raise ValidationError("Gambar harus memuat satu SisaBayarQR yang valid.")
-        token = codes[0].text[len(PAYMENT_QR_PREFIX):]
+        data = upload.read()
+        if not data.startswith(PAYMENT_PNG_SIGNATURE):
+            raise ValidationError("Unggah file PNG SisaBayarQR yang diunduh dari aplikasi.")
+
+        token = None
+        offset = len(PAYMENT_PNG_SIGNATURE)
+        while offset + 12 <= len(data):
+            length = int.from_bytes(data[offset:offset + 4], "big")
+            end = offset + 12 + length
+            if end > len(data):
+                break
+            chunk_type = data[offset + 4:offset + 8]
+            chunk_data = data[offset + 8:offset + 8 + length]
+            if chunk_type == b"tEXt" and chunk_data.startswith(PAYMENT_PNG_MARKER):
+                if token is not None or len(chunk_data) > 4096:
+                    break
+                token = chunk_data[len(PAYMENT_PNG_MARKER):].decode("ascii")
+            if chunk_type == b"IEND":
+                if end != len(data):
+                    break
+                break
+            offset = end
+
+        if not token:
+            raise ValidationError("PNG bukan SisaBayarQR yang diunduh dari aplikasi.")
         signing.loads(token, salt=PAYMENT_QR_SALT)
+        if not hmac.compare_digest(data, _payment_png(token)):
+            raise ValidationError("Gambar QR telah diubah. Unggah PNG asli hasil unduhan.")
         return token
-    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError, signing.BadSignature):
-        raise ValidationError("Gambar atau tanda tangan SisaBayarQR tidak valid.")
+    except (UnicodeDecodeError, signing.BadSignature, ValueError) as error:
+        raise ValidationError("Tanda tangan SisaBayarQR tidak valid.") from error
     finally:
         upload.seek(0)
 
@@ -353,12 +502,10 @@ def payment_view(request, pk=None):
     with transaction.atomic():
         orders = _payment_orders(_get_consumer_order(request.user, pk))
     token = signing.dumps(_payment_data(orders), salt=PAYMENT_QR_SALT, compress=True)
-    image = BytesIO()
-    qrcode.make(PAYMENT_QR_PREFIX + token).save(image, format="PNG")
     context = _payment_context(orders)
     context.update({
         "screen": "payment", "screen_config": _screen("Pembayaran", "consumer"),
-        "payment_qr_image": "data:image/png;base64," + base64.b64encode(image.getvalue()).decode(),
+        "payment_qr_image": "data:image/png;base64," + base64.b64encode(_payment_png(token)).decode(),
         "status_url": reverse("main:payment_status", args=(pk,)),
         "order_list_url": f"{reverse('main:order_list')}?highlight={pk}",
     })
@@ -430,8 +577,11 @@ def simulator_bayar_view(request):
                     with proof.open("rb") as saved_image:
                         if _read_payment_qr(saved_image) != token:
                             raise ValidationError("Gambar pembayaran berubah. Unggah ulang SisaBayarQR.")
+                    claimed_merchants = set()
                     for item in orders:
-                        item.mark_paid()
+                        merchant_id = item.product.merchant_id
+                        item.mark_paid(create_claim_qr=merchant_id not in claimed_merchants)
+                        claimed_merchants.add(merchant_id)
 
             if action == "confirm":
                 request.session.pop("verified_payment", None)
@@ -461,19 +611,32 @@ def order_list_view(request):
                 locked = OrderSystem.objects.select_for_update().get(pk=current.pk)
                 _expire_locked_order(locked)
 
-    orders = request.user.consumer_orders.select_related("product", "product__merchant")
-    active_orders = orders.filter(
-        payment_status__in=(
-            OrderSystem.PaymentStatus.PENDING,
-            OrderSystem.PaymentStatus.PAID,
-        )
-    )
-    history_orders = orders.filter(
-        payment_status__in=(
-            OrderSystem.PaymentStatus.COMPLETED,
-            OrderSystem.PaymentStatus.EXPIRED,
-        )
-    )
+    orders = list(request.user.consumer_orders.select_related("product", "product__merchant"))
+    claim_codes = {}
+    for item in sorted(orders, key=lambda current: current.pk):
+        if item.claim_qr_code:
+            claim_codes.setdefault(_store_claim_key(item), item.claim_qr_code)
+
+    active_orders = [
+        item for item in orders
+        if item.payment_status in (OrderSystem.PaymentStatus.PENDING, OrderSystem.PaymentStatus.PAID)
+    ]
+    history_orders = [
+        item for item in orders
+        if item.payment_status in (OrderSystem.PaymentStatus.COMPLETED, OrderSystem.PaymentStatus.EXPIRED)
+    ]
+    paid_by_store = {}
+    for item in active_orders:
+        if item.payment_status == OrderSystem.PaymentStatus.PAID:
+            paid_by_store.setdefault(_store_claim_key(item), []).append(item)
+    for group_key, items in paid_by_store.items():
+        code = claim_codes.get(group_key)
+        for item in items:
+            item.store_claim_code = code
+            item.show_store_claim = item is items[0] and bool(code)
+        if code:
+            items[0].store_claim_items = items
+            items[0].store_claim_image = _claim_qr_image(code)
     context = {
         "screen": "orders",
         "screen_config": _screen("Pesanan Saya", "consumer"),
@@ -508,6 +671,14 @@ def merchant_order_list_view(request):
         selected = displayed_orders.filter(pk=selected_id).first()
     if selected is None:
         selected = displayed_orders.first()
+    if selected and selected.payment_status == OrderSystem.PaymentStatus.PAID:
+        code = next(
+            (item.claim_qr_code for item in _store_claim_orders(selected) if item.claim_qr_code),
+            None,
+        )
+        selected.store_claim_code = code
+        if code:
+            selected.store_claim_image = _claim_qr_image(code)
 
     wallet, _ = MerchantWallet.objects.get_or_create(merchant=request.user)
     context = {
@@ -531,7 +702,13 @@ def merchant_order_list_view(request):
 @never_cache
 @require_http_methods(["GET", "POST"])
 def validate_claim_view(request):
+    is_ajax = (
+        request.headers.get("x-requested-with") == "XMLHttpRequest"
+        or request.GET.get("format") == "json"
+        or "application/json" in request.headers.get("accept", "")
+    )
     order = None
+    claim_orders = []
     code = request.GET.get("code", "").strip().upper()
     action = request.POST.get("action") if request.method == "POST" else None
     if request.method == "POST":
@@ -547,48 +724,91 @@ def validate_claim_view(request):
             .first()
         )
         if order is None:
+            if is_ajax:
+                return JsonResponse({"success": False, "error": "Kode klaim tidak ditemukan untuk merchant ini."})
             messages.error(request, "Kode klaim tidak ditemukan untuk merchant ini.")
-        elif order.is_pickup_expired:
+        else:
             with transaction.atomic():
-                locked = OrderSystem.objects.select_for_update().get(pk=order.pk)
-                _expire_locked_order(locked)
-            order.refresh_from_db()
-            messages.error(request, "Batas pengambilan pesanan sudah lewat.")
+                claim_orders = _store_claim_orders(order, lock=True)
+                expired = False
+                for item in claim_orders:
+                    expired = _expire_locked_order(item) or expired
+            order = next(item for item in claim_orders if item.pk == order.pk)
+            if expired:
+                if not is_ajax:
+                    messages.error(request, "Sebagian produk melewati batas pengambilan.")
+
+    if is_ajax and order is None:
+        return JsonResponse({"success": False, "error": "Masukkan kode klaim pesanan merchant ini."})
 
     if action == "confirm" and order is not None:
         with transaction.atomic():
-            locked_order = get_object_or_404(
-                OrderSystem.objects.select_for_update(),
-                pk=order.pk,
-                product__merchant=request.user,
-            )
-            if _expire_locked_order(locked_order):
-                messages.error(request, "Batas pengambilan pesanan sudah lewat.")
-                return redirect("main:validate_claim")
-            if locked_order.payment_status != OrderSystem.PaymentStatus.PAID:
+            claim_orders = _store_claim_orders(order, lock=True)
+            for item in claim_orders:
+                _expire_locked_order(item)
+            ready_orders = [
+                item for item in claim_orders
+                if item.payment_status == OrderSystem.PaymentStatus.PAID
+            ]
+            if not ready_orders:
+                if is_ajax:
+                    return JsonResponse({"success": False, "error": "Kode ini sudah digunakan, belum dibayar, atau melewati batas pengambilan."})
                 messages.error(request, "Kode ini sudah digunakan atau belum dibayar.")
                 return redirect("main:validate_claim")
 
-            locked_order.payment_status = OrderSystem.PaymentStatus.COMPLETED
-            locked_order.save(update_fields=("payment_status",))
+            total = sum((item.total_price for item in ready_orders), Decimal("0"))
+            for item in ready_orders:
+                item.payment_status = OrderSystem.PaymentStatus.COMPLETED
+                item.save(update_fields=("payment_status",))
             wallet, _ = MerchantWallet.objects.select_for_update().get_or_create(
                 merchant=request.user
             )
-            wallet.balance = F("balance") + locked_order.total_price
+            wallet.balance = F("balance") + total
             wallet.save(update_fields=("balance", "updated_at"))
 
+        if is_ajax:
+            return JsonResponse({
+                "success": True,
+                "message": "QR valid. Pesanan selesai dan saldo merchant diperbarui.",
+                "total": str(total),
+            })
         messages.success(
             request,
             "QR valid. Pesanan selesai dan saldo merchant diperbarui.",
         )
         return redirect(
-            f"{reverse('main:merchant_orders')}?tab=history&selected={locked_order.pk}"
+            f"{reverse('main:merchant_orders')}?tab=history&selected={ready_orders[0].pk}"
         )
 
+    ready_orders = [
+        item for item in claim_orders
+        if item.payment_status == OrderSystem.PaymentStatus.PAID
+    ]
+    if is_ajax:
+        total = sum((item.total_price for item in ready_orders), Decimal("0"))
+        return JsonResponse({
+            "success": True,
+            "claim_code": order.claim_qr_code,
+            "buyer_name": order.consumer.get_full_name() or order.consumer.username,
+            "item_name": ", ".join(f"{item.product.product_name} ({item.quantity})" for item in ready_orders),
+            "quantity": sum(item.quantity for item in ready_orders),
+            "items": [{
+                "order_id": item.pk,
+                "product_name": item.product.product_name,
+                "quantity": item.quantity,
+                "total_price": str(item.total_price),
+            } for item in ready_orders],
+            "total_price": str(total),
+            "total_price_formatted": _rupiah(total),
+            "can_claim": bool(ready_orders),
+        })
     context = {
         "screen": "validate",
         "screen_config": _screen("Validasi QR Klaim", "merchant"),
         "order": order,
+        "claim_orders": claim_orders,
+        "claim_ready": bool(ready_orders),
+        "claim_total": sum((item.total_price for item in ready_orders), Decimal("0")),
         "claim_code": code,
     }
     return render(request, "validate_claim.html", context)
@@ -634,7 +854,7 @@ def product_view(request):
 @never_cache
 @product_merchant_required
 def product_create(request):
-    form = MerchantProductForm(request.POST or None)
+    form = MerchantProductForm(request.POST or None, request.FILES or None)
     if request.method == "POST" and form.is_valid():
         product = form.save(commit=False)
         product.merchant = request.user
@@ -649,7 +869,7 @@ def product_create(request):
 @product_merchant_required
 def product_update(request, product_id):
     product = get_object_or_404(MerchantProduct, product_id=product_id, merchant=request.user)
-    form = MerchantProductForm(request.POST or None, instance=product)
+    form = MerchantProductForm(request.POST or None, request.FILES or None, instance=product)
     if request.method == "POST" and form.is_valid():
         form.save()
         messages.success(request, "Produk berhasil diperbarui.")
@@ -662,9 +882,13 @@ def product_update(request, product_id):
 @product_merchant_required
 def product_delete(request, product_id):
     product = get_object_or_404(MerchantProduct, product_id=product_id, merchant=request.user)
-    if request.method == "POST":
+    try:
         product.delete()
         messages.success(request, "Produk berhasil dihapus.")
+    except ProtectedError:
+            product.product_status = MerchantProduct.Status.INACTIVE
+            product.save(update_fields=["product_status"])
+            messages.info(request, "Produk sudah punya pesanan, jadi dinonaktifkan (tidak dihapus).")
     return redirect("main:product_view")
 
 
@@ -690,10 +914,12 @@ def merchant_location(request):
     
     context = {
         'merchants': merchants,
+        'nearby': merchants,
         'merchants_data': merchants_data,
         'search_query': query,
     }
     return render(request, 'merchant_loc.html', context)
+
 #BUILDING CONSUMER PROFILE 
 def get_consumer_profile(user):
     """Mengambil atau membuat profil statistik konsumen."""
@@ -703,13 +929,14 @@ def get_consumer_profile(user):
 #LOGIN CONSUMER PROFILE
 @login_required(login_url="main:login")
 @never_cache
-def consumer_dashboard_view(request):
+def consumer_dashboard_view(request): #memastikan pengguna boleh masuk
     # makesure hanya akun consumer yg bisa membuka halaman ini
     user_profile = UserProfile.objects.filter(user=request.user).first()
     if not user_profile or user_profile.role != UserProfile.Role.CONSUMER:
         messages.error(request, "Halaman ini khusus konsumen.")
         return redirect("main:show_main")
 
+    #mengambil pesanan yang selesai
     consumer_profile = get_consumer_profile(request.user)
     completed_orders = OrderSystem.objects.filter(
         consumer=request.user,
@@ -725,6 +952,7 @@ def consumer_dashboard_view(request):
             original_price - discounted_price, Decimal("0.00")
         ) * order.quantity
 
+    #menyimpan statistik ke profil
     consumer_profile.total_orders_completed = completed_orders.count()
     consumer_profile.total_money_saved = total_saved
     consumer_profile.save(update_fields=[
@@ -732,6 +960,7 @@ def consumer_dashboard_view(request):
         "total_money_saved",
     ])
 
+    #mengirim data ke template
     context = {
         "consumer_profile": consumer_profile,
         "total_orders_completed": consumer_profile.total_orders_completed,
@@ -743,12 +972,11 @@ def consumer_dashboard_view(request):
 #EDIT CONSUMER PROFILE
 @login_required(login_url="main:login")
 @never_cache
-def edit_profile_view(request):
+def edit_profile_view(request): #mengedit profil dan mengubah password
     user_profile = UserProfile.objects.filter(user=request.user).first()
     if not user_profile or user_profile.role != UserProfile.Role.CONSUMER:
         messages.error(request, "Halaman ini khusus konsumen.")
         return redirect("main:show_main")
-
     consumer_profile = get_consumer_profile(request.user)
 
     if request.method == "POST":
@@ -758,11 +986,12 @@ def edit_profile_view(request):
         password_form = PasswordChangeForm(request.user, request.POST)
 
         action = request.POST.get("action")
-        if action == "profile" and profile_form.is_valid():
+        if action == "profile" and profile_form.is_valid(): #menyimpan perubahan profil
             profile_form.save()
             messages.success(request, "Profil berhasil diperbarui.")
             return redirect("main:edit_profile")
 
+        #mengubah password
         if action == "password" and password_form.is_valid():
             user = password_form.save()
             update_session_auth_hash(request, user)

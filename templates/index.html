@@ -19,7 +19,7 @@
 
             <div class="hero-actions">
                 <a href="{{ catalog_url|default:checkout_url }}" class="btn btn-light">Rescue My First Meal</a>
-                <a href="#impact" class="btn btn-outline">Track My Impact</a>
+                <a href="#maps" class="btn btn-light">Lihat Peta Merchant</a>
             </div>
         </div>
 
@@ -104,15 +104,10 @@
     </section>
 
     {% include 'merchant_loc.html' %}
-
-    <section class="impact" id="impact">
-        <h2>Your Impact,<br>Made Visible</h2>
-
-        <p>
-            See exactly how many meals you’ve rescued, kilograms of CO₂ prevented, and where you rank among friends. The Impact Hub turns good habits into a story worth sharing.
-        </p>
-
-        <a href="#" class="btn btn-light btn-lg">Open Impact Hub</a>
-    </section>
 </main>
 {% endblock content %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{% static 'js/merchant_loc.js' %}?v=5"></script>
+{% endblock extra_js %}

@@ -16,6 +16,7 @@ class MerchantProductForm(forms.ModelForm):
             "discount_rate",
             "start_pickup",
             "end_pickup",
+            "product_photo",
         ]
         widgets = {
             "start_pickup": forms.DateTimeInput(format="%Y-%m-%dT%H:%M", attrs={"type": "datetime-local"}),
