@@ -1,5 +1,5 @@
 # SisaBijak 
-SisaBijak adalah platform marketplace food rescue berbasis Django yang menghubungkan toko roti dan cafe lokal dengan mahasiswa atau pekerja yang lagi nyari makanan berkualitas dengan harga miring.
+SisaBijak adalah platform e-commerce food rescue berbasis Django yang dirancang untuk mengatasi masalah pemborosan pangan (food waste) dengan menjembatani bisnis kuliner lokal (seperti restoran, kafe, dan toko roti) dengan konsumen. Melalui platform ini, merchant dapat menjual surplus makanan berkualitas yang masih layak konsumsi menjelang jam operasional berakhir dengan potongan harga khusus agar tidak terbuang sia-sia. Inisiatif ini memberikan solusi saling menguntungkan dimana konsumen memperoleh makanan berkualitas dengan harga yang jauh lebih hemat, merchant dapat meminimalisasi kerugian dari stok berlebih, dan lingkungan terlindungi melalui pengurangan emisi karbon akibat limbah makanan.
 
 # Anggota Kelompok
 1. Debora Putri Dion Simamora (2506544126)
@@ -7,6 +7,12 @@ SisaBijak adalah platform marketplace food rescue berbasis Django yang menghubun
 3. Khalisha Nalani Chandra (2506625041)
 4. Rafael Darius Sagala (2506584275)
 5. Ghaisan Nabil Iradat (2506619051)
+
+# Roles
+- `Guest` : AnonymousUser
+- `Consumer` : Akun consumer, self register via web
+- `Merchant` : Akun merchant, register manual by contact Admin
+- `Admin` : SuperUser
 
 # Fitur
 
@@ -240,12 +246,6 @@ Modul ini berfungsi sebagai gerbang utama platform SisaBijak. Halaman ini menyaj
 
 ---
 
-# Roles
-- `Guest` : AnonymousUser
-- `Consumer` : Akun consumer, self register via web
-- `Merchant` : Akun merchant, register manual by contact Admin
-- `Admin` : SuperUser
-
 # Pembagian Job Desk
 - `Project Manager`: Jefry Acmal Dzikhrullah
 - `Modul Catalog` : Debora Putri Dion Simamora
@@ -258,3 +258,7 @@ Modul ini berfungsi sebagai gerbang utama platform SisaBijak. Halaman ini menyaj
 - `Landing Page & Base Platform` : Ghaisan Nabil Iradat
 - `Modul Consumer Profile` : Khalisha Nalani Chandra
 - `Web Design Coordinator` : Khalisha Nalani Chandra
+
+# Tautan
+- Web Deployment: [SisaBijak Websites](https://jefry-acmal-sisabijak.pws.cs.ui.ac.id/)
+- Design Figma: [SisaBijak Web Design](-)
