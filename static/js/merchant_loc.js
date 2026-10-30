@@ -1,4 +1,76 @@
 document.addEventListener('DOMContentLoaded', function () {
+     // 1. Reveal-up & Pop-card scroll animation observer
+    const animatedEls = document.querySelectorAll('.reveal-up, .pop-card');
+    if ('IntersectionObserver' in window) {
+        animatedEls.forEach(function (el) {
+            el.classList.remove('is-visible');
+        });
+        const observer = new IntersectionObserver(function (entries, obs) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    obs.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.12 });
+        animatedEls.forEach(function (el) {
+            observer.observe(el);
+        });
+    } else {
+        animatedEls.forEach(function (el) {
+            el.classList.add('is-visible');
+        });
+    }
+    // 2. Animasi Angka Counter (0 -> 100++ dan 0.0 -> 3.2 Ton)
+    const statsCard = document.getElementById('stats-counter-card');
+    const mpEl = document.getElementById('counter-marketplace');
+    const co2El = document.getElementById('counter-co2');
+    function runCounters() {
+        if (!mpEl || !co2El || statsCard.dataset.counted === 'true') return;
+        statsCard.dataset.counted = 'true';
+        const duration = 1400;
+        const startTime = performance.now();
+        const targetMp = parseInt(mpEl.dataset.target || '100', 10);
+        const targetCo2 = parseFloat(co2El.dataset.target || '3.2');
+        function tick(now) {
+            const progress = Math.min((now - startTime) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            mpEl.textContent = Math.round(eased * targetMp);
+            co2El.textContent = (eased * targetCo2).toFixed(1);
+            if (progress < 1) {
+                requestAnimationFrame(tick);
+            } else {
+                mpEl.textContent = targetMp;
+                co2El.textContent = targetCo2.toFixed(1);
+            }
+        }
+        requestAnimationFrame(tick);
+    }
+    if (statsCard && 'IntersectionObserver' in window) {
+        const counterObs = new IntersectionObserver(function (entries, obs) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                    runCounters();
+                    obs.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.25 });
+        counterObs.observe(statsCard);
+    }
+    // 3. Efek Peek SISA [IKON] BIJAK dari bawah saat di-scroll
+    const peekRow = document.getElementById('tgtg-peek-row');
+    if (peekRow && 'IntersectionObserver' in window) {
+        peekRow.classList.add('is-hidden-peek');
+        const peekObs = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                    peekRow.classList.remove('is-hidden-peek');
+                }
+            });
+        }, { threshold: 0.15 });
+        peekObs.observe(peekRow.parentElement);
+    }
+
     const mapEl = document.getElementById('merchant-map');
     if (!mapEl) return;
 

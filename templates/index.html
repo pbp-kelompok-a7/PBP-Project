@@ -6,108 +6,366 @@
 {% endblock meta %}
 
 {% block content %}
-<main>
-    <section class="hero">
-        <div class="hero-text">
-            <h1>Save Food,<br>Fight <span class="accent">Climate Change.</span></h1>
+<!-- Gunakan -mt-28 langsung pada <main> (tanpa overflow-hidden vertikal di <main>) agar background hijau Hero naik penuh menutup area di belakang navbar tanpa garis putih di atas -->
+<main class="w-full -mt-28 overflow-x-hidden">
 
-            <p>
-                Join the movement to reduce food waste and carbon emission.
-                Rescue mystery boxes from local restaurants and track your
-                planet-positive impact in real time.
+    <!-- =========================================================================
+         1. HALAMAN PERTAMA (HERO SECTION): SAVE FOOD & PAPER BAG (SESUAI FIGMA)
+         ========================================================================= -->
+    <section class="relative min-h-screen flex flex-col justify-between bg-gradient-to-b from-[#78B285] via-[#A1D1AA] to-[#DDEFE0] pt-36 pb-0 px-4 text-center overflow-hidden">
+        <div class="max-w-3xl mx-auto relative z-10 my-auto pt-2">
+            <h1 class="m-0 text-4xl sm:text-6xl font-extrabold tracking-tight leading-[1.12]">
+                <span class="block text-white drop-shadow-sm">Save Food</span>
+                <span class="block text-[#3F704D]">Fight Climate Change</span>
+            </h1>
+
+            <p class="mt-4 mx-auto max-w-xl text-xs sm:text-sm font-semibold text-[#090D09] leading-relaxed">
+                Join the movement to reduce food waste and carbon emission. Rescue mystery boxes
+                from local restaurants and track your planet-positive impact in real time.
             </p>
 
-            <div class="hero-actions">
-                <a href="{{ catalog_url|default:checkout_url }}" class="btn btn-light">Rescue My First Meal</a>
-                <a href="#maps" class="btn btn-light">Lihat Peta Merchant</a>
+            <!-- Tombol Rescue Food -> Catalog | Join as Partner -> Login Merchant -->
+            <div class="mt-6 flex justify-center items-center gap-4 flex-wrap">
+                <a href="{% url 'catalog:catalog_list' %}"
+                   class="px-7 py-2.5 rounded-full bg-[#467349] hover:bg-[#385938] border border-white/30 text-white text-xs sm:text-sm font-semibold shadow-md hover:-translate-y-0.5 transition duration-200 no-underline">
+                    Rescue Food
+                </a>
+                <a href="{% url 'main:login' %}?next={% url 'main:product_view' %}"
+                   class="px-7 py-2.5 rounded-full bg-[#467349] hover:bg-[#385938] border border-white/30 text-white text-xs sm:text-sm font-semibold shadow-md hover:-translate-y-0.5 transition duration-200 no-underline">
+                    Join as Partner
+                </a>
             </div>
         </div>
 
-        <div class="hero-visual">
-            <img
-                src="{% static 'img/mascot.png' %}"
-                alt="SisaBijak mascot"
-                class="hero-mascot"
-            >
+        <!-- Paper Bag duduk tepat di batas bawah Hero Section (tanpa panah berputar tambahan) -->
+        <div class="relative mx-auto mt-6 w-64 sm:w-80 md:w-[340px] flex items-end justify-center hero-bag-entrance">
+            <img src="{% static 'img/Final Logo Suer.png' %}"
+                 alt="SisaBijak Mystery Bag"
+                 class="relative z-10 w-full h-auto object-contain object-bottom drop-shadow-2xl block">
         </div>
     </section>
 
-    <div class="ticker" aria-label="Statistik SisaBijak">
-        <div class="ticker-track">
-            <span>1,245,670 KG OF FOOD SAVED</span>
-            <span>89,300 MEMBERS ACTIVE</span>
-            <span>4,210 TONNES CO₂ PREVENTED</span>
-            <span>1,245,670 KG OF FOOD SAVED</span>
-            <span>89,300 MEMBERS ACTIVE</span>
-            <span>4,210 TONNES CO₂ PREVENTED</span>
-            <span aria-hidden="true">1,245,670 KG OF FOOD SAVED</span>
-            <span aria-hidden="true">89,300 MEMBERS ACTIVE</span>
-            <span aria-hidden="true">4,210 TONNES CO₂ PREVENTED</span>
-            <span aria-hidden="true">1,245,670 KG OF FOOD SAVED</span>
-            <span aria-hidden="true">89,300 MEMBERS ACTIVE</span>
-            <span aria-hidden="true">4,210 TONNES CO₂ PREVENTED</span>
+    <!-- =========================================================================
+         2. TICKER BAR STATISTIK (PEMBATAS HALAMAN PERTAMA & SECTION BERIKUTNYA)
+         ========================================================================= -->
+    <div class="bg-[#CBE5D8] border-y border-[#B5D5C8] py-3 overflow-hidden" aria-label="Statistik SisaBijak">
+        <div class="sb-marquee-track flex items-center gap-12 w-max">
+            <span class="text-xs sm:text-sm font-extrabold tracking-wide text-[#3B6E8C] whitespace-nowrap">1,245,670 KG OF FOOD SAVED</span>
+            <span class="text-xs sm:text-sm font-extrabold tracking-wide text-[#3B6E8C] whitespace-nowrap">89,300 MEMBERS ACTIVE</span>
+            <span class="text-xs sm:text-sm font-extrabold tracking-wide text-[#3B6E8C] whitespace-nowrap">4,210 TONNES CO₂ PREVENTED</span>
+            <span class="text-xs sm:text-sm font-extrabold tracking-wide text-[#3B6E8C] whitespace-nowrap">1,245,670 KG OF FOOD SAVED</span>
+            <span class="text-xs sm:text-sm font-extrabold tracking-wide text-[#3B6E8C] whitespace-nowrap">89,300 MEMBERS ACTIVE</span>
+            <span class="text-xs sm:text-sm font-extrabold tracking-wide text-[#3B6E8C] whitespace-nowrap">4,210 TONNES CO₂ PREVENTED</span>
+            <!-- Set Duplikat Loop -->
+            <span aria-hidden="true" class="text-xs sm:text-sm font-extrabold tracking-wide text-[#3B6E8C] whitespace-nowrap">1,245,670 KG OF FOOD SAVED</span>
+            <span aria-hidden="true" class="text-xs sm:text-sm font-extrabold tracking-wide text-[#3B6E8C] whitespace-nowrap">89,300 MEMBERS ACTIVE</span>
+            <span aria-hidden="true" class="text-xs sm:text-sm font-extrabold tracking-wide text-[#3B6E8C] whitespace-nowrap">4,210 TONNES CO₂ PREVENTED</span>
+            <span aria-hidden="true" class="text-xs sm:text-sm font-extrabold tracking-wide text-[#3B6E8C] whitespace-nowrap">1,245,670 KG OF FOOD SAVED</span>
+            <span aria-hidden="true" class="text-xs sm:text-sm font-extrabold tracking-wide text-[#3B6E8C] whitespace-nowrap">89,300 MEMBERS ACTIVE</span>
+            <span aria-hidden="true" class="text-xs sm:text-sm font-extrabold tracking-wide text-[#3B6E8C] whitespace-nowrap">4,210 TONNES CO₂ PREVENTED</span>
         </div>
     </div>
 
-    <section class="features">
-        <h2>Why people love <span class="accent">SisaBijak</span></h2>
+    <!-- =========================================================================
+         3. SECTION SETELAH HALAMAN PERTAMA: WHY PEOPLE LOVE SISABIJAK?
+         (Semua Lurus / Tidak Miring + 3 Orang di Depan Tengah + Card Bumi Statis)
+         ========================================================================= -->
+    <section class="relative bg-[#F8F7F3] pt-14 pb-12 px-4 overflow-hidden">
+        <!-- Background Cream/Beige LURUS (tanpa -skew-y-2) di bagian bawah belakang orang & card sesuai warna Figma -->
+        <div class="pointer-events-none absolute inset-x-0 bottom-12 h-[300px] sm:h-[340px] bg-gradient-to-b from-transparent via-[#EFECE2]/95 to-[#EAE4D3] z-0" aria-hidden="true"></div>
 
-        <div class="cards">
-            <article class="card">
-                <div class="card-icon">
-                    <img
-                        src="{% static 'img/real-time-analytics.png' %}"
-                        alt="Real-time Analytics"
-                    >
+        <div class="max-w-6xl mx-auto relative z-10">
+
+            <!-- Judul Section -->
+            <div class="text-center reveal-up is-visible">
+                <h2 class="m-0 text-3xl sm:text-5xl font-extrabold tracking-tight leading-[1.15]">
+                    <span class="block text-[#3F6A82]">WHY PEOPLE</span>
+                    <span class="text-[#F06A6A]">LOVE</span> <span class="text-[#467349]">SisaBijak?</span>
+                </h2>
+            </div>
+
+            <!-- Tiga Fitur (Susunan V-Arch sesuai Figma) -->
+            <div class="mt-10 grid grid-cols-1 md:grid-cols-3 gap-8 items-start text-center max-w-5xl mx-auto">
+                <!-- Fitur Kiri -->
+                <div class="reveal-up is-visible flex flex-col items-center px-2" style="transition-delay: 80ms;">
+                    <div class="text-[#467349] mb-3 flex items-center justify-center">
+                        <svg class="w-10 h-10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                        </svg>
+                    </div>
+                    <p class="m-0 text-xs sm:text-[13px] font-bold text-[#385938] leading-snug max-w-[240px]">
+                        Track your contribution toward reducing food waste, and estimated carbon footprint you’ve reduced each time you rescue quality food.
+                    </p>
                 </div>
 
-                <h3>Real-time Analytics</h3>
-
-                <p>
-                    Visualize your carbon footprint reduction with beautiful,
-                    interactive charts that update as you rescue meals.
-                </p>
-            </article>
-
-            <article class="card">
-                <div class="card-icon">
-                    <img
-                        src="{% static 'img/gamifield-milestones.png' %}"
-                        alt="Gamified Milestones"
-                    >
+                <!-- Fitur Tengah (Lebih Turun / md:mt-14 sesuai Figma) -->
+                <div class="reveal-up is-visible flex flex-col items-center px-2 md:mt-14" style="transition-delay: 180ms;">
+                    <div class="text-[#467349] mb-3 flex items-center justify-center">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <rect x="2" y="6" width="20" height="12" rx="2"/>
+                            <circle cx="12" cy="12" r="2.5"/>
+                            <path d="M6 12h.01M18 12h.01" stroke-linecap="round" stroke-width="2.5"/>
+                        </svg>
+                    </div>
+                    <p class="m-0 text-xs sm:text-[13px] font-bold text-[#385938] leading-snug max-w-[220px]">
+                        A real-time visualization of your total monthly savings
+                    </p>
                 </div>
 
-                <h3>Gamified Milestones</h3>
+                <!-- Fitur Kanan -->
+                <div class="reveal-up is-visible flex flex-col items-center px-2" style="transition-delay: 280ms;">
+                    <div class="text-[#467349] mb-3 flex items-center justify-center">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 9.5L4.5 4h15L21 9.5M3 9.5c0 1.38 1.12 2.5 2.5 2.5S8 10.88 8 9.5m-5 0V20h18V9.5M8 9.5c0 1.38 1.12 2.5 2.5 2.5S13 10.88 13 9.5m0 0c0 1.38 1.12 2.5 2.5 2.5S18 10.88 18 9.5m0 0c0 1.38 1.12 2.5 2.5 2.5S21 10.88 21 9.5M9 20v-6h6v6"/>
+                        </svg>
+                    </div>
+                    <p class="m-0 text-xs sm:text-[13px] font-bold text-[#385938] leading-snug max-w-[240px]">
+                        Explore and rescue a variety of delicious pastries, cakes, and even hearty meals from nearby local bakeries and cafes.
+                    </p>
+                </div>
+            </div>
 
-                <p>
-                    Earn badges like “Planet Hero” and unlock achievements
-                    as you contribute to a greener world.
-                </p>
-            </article>
+            <!-- Area Visual Tengah: Card Kiri & Kanan LURUS + 3 Orang di Depan Tengah -->
+            <div class="relative mt-6 pt-4 min-h-[290px] sm:min-h-[370px] flex items-end justify-center">
 
-            <article class="card">
-                <div class="card-icon">
-                    <img
-                        src="{% static 'img/mystery-boxes.png' %}"
-                        alt="Mystery Boxes"
-                    >
+                <!-- Pop-up Review Cards Kiri (LURUS / Tanpa Rotasi Miring) -->
+                <div class="hidden md:flex flex-col gap-3 absolute left-0 top-6 w-[310px] lg:w-[340px] z-10 pointer-events-none select-none opacity-95">
+                    <div class="pop-card is-visible bg-white/95 backdrop-blur-sm border border-gray-200/90 rounded-2xl p-3.5 shadow-md" style="transition-delay: 80ms;">
+                        <div class="flex items-center gap-2 text-[11px]">
+                            <span class="w-5 h-5 rounded-full bg-[#C8DFD8] inline-block flex-shrink-0"></span>
+                            <strong class="text-gray-800">Raka</strong>
+                            <span class="bg-[#E2F2E5] text-[#2E5A36] px-1.5 py-0.5 rounded font-bold text-[10px]">4 / 5</span>
+                            <span class="text-gray-400 text-[10px]">2 days ago</span>
+                        </div>
+                        <p class="m-0 mt-1.5 text-[10px] text-gray-500 leading-normal">Great portion for the price! Pickup was quick and staff were super friendly.</p>
+                    </div>
+
+                    <div class="pop-card is-visible bg-white/95 backdrop-blur-sm border border-gray-200/90 rounded-2xl p-3.5 shadow-md" style="transition-delay: 180ms;">
+                        <div class="flex items-center gap-2 text-[11px]">
+                            <span class="w-5 h-5 rounded-full bg-[#C8DFD8] inline-block flex-shrink-0"></span>
+                            <strong class="text-gray-800">Bimo</strong>
+                            <span class="bg-[#E2F2E5] text-[#2E5A36] px-1.5 py-0.5 rounded font-bold text-[10px]">5 / 5</span>
+                            <span class="text-gray-400 text-[10px]">1 day ago</span>
+                        </div>
+                        <p class="m-0 mt-1.5 text-[10px] text-gray-500 leading-normal">Love the surprise bag concept. Pastries were still fresh and delicious!</p>
+                    </div>
+
+                    <div class="pop-card is-visible bg-[#F4FAF8] border-[1.5px] border-[#385938] rounded-2xl p-3.5 shadow-lg" style="transition-delay: 280ms;">
+                        <div class="flex items-center justify-between text-[11px]">
+                            <div class="flex items-center gap-2">
+                                <span class="w-5 h-5 rounded-full bg-[#C8DFD8] inline-block flex-shrink-0"></span>
+                                <strong class="text-gray-800">Nabil (You)</strong>
+                                <span class="bg-[#E2F2E5] text-[#2E5A36] px-1.5 py-0.5 rounded font-bold text-[10px]">5 / 5</span>
+                                <span class="text-gray-400 text-[10px]">Just now</span>
+                            </div>
+                            <span class="text-[10px] font-bold text-[#3B6E8C]">Edit <span class="text-red-500 ml-1.5">Delete</span></span>
+                        </div>
+                        <p class="m-0 mt-1.5 text-[10px] text-gray-600 leading-normal">Got 3 breads and 2 croissants at 60% off. Totally worth it!</p>
+                    </div>
                 </div>
 
-                <h3>Mystery Boxes</h3>
+                <!-- Pop-up Dashboard Pesanan Masuk Kanan (LURUS / Tanpa Rotasi Miring) -->
+                <div class="hidden md:block absolute right-0 top-6 w-[330px] lg:w-[370px] z-10 pointer-events-none select-none opacity-95">
+                    <div class="pop-card is-visible" style="transition-delay: 160ms;">
+                        <!-- Tab Pills di atas Card Pesanan Masuk -->
+                        <div class="flex items-center gap-2 mb-2 pl-1">
+                            <span class="px-3 py-1 rounded-full bg-white/95 border border-gray-300 text-[10px] font-semibold text-gray-700 shadow-sm">Produk</span>
+                            <span class="px-3.5 py-1 rounded-full bg-[#2F3E30] text-[10px] font-semibold text-white shadow-sm">Pesanan &amp; Pendapatan</span>
+                        </div>
 
-                <p>
-                    Discover surplus food from top-rated restaurants at a
-                    fraction of the cost. Delicious and sustainable.
-                </p>
-            </article>
+                        <!-- Panel Utama Pesanan Masuk -->
+                        <div class="bg-white/95 backdrop-blur-sm border border-gray-200/90 rounded-2xl p-4 shadow-xl">
+                            <div class="flex items-start justify-between gap-2 mb-3">
+                                <div>
+                                    <p class="m-0 text-sm font-extrabold text-gray-800 leading-tight">Pesanan Masuk</p>
+                                    <p class="m-0 text-[9px] text-gray-400">Validasi klaim dan pantau komisi penjualan</p>
+                                </div>
+                                <div class="bg-[#E4F2FE] border border-[#BFE0FC] rounded-xl px-2.5 py-1 text-right">
+                                    <span class="block text-[8px] text-gray-500">Total Pendapatan Bersih</span>
+                                    <strong class="text-[11px] text-[#0A63B5]">Rp 120.000</strong>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-12 gap-2.5 text-[9px]">
+                                <!-- Daftar Pesanan Kiri -->
+                                <div class="col-span-7 space-y-1.5 border border-gray-100 rounded-xl p-2 bg-gray-50/50">
+                                    <div class="flex justify-between items-center text-[9px] font-bold text-gray-700 mb-1">
+                                        <span>Daftar Pesanan</span>
+                                        <span class="text-[#15803d]">✓ Refresh</span>
+                                    </div>
+                                    <div class="p-1.5 rounded-lg border border-green-400 bg-white flex justify-between items-center shadow-sm">
+                                        <div>
+                                            <strong class="block text-gray-800 text-[9px]">#SB-9281A</strong>
+                                            <span class="text-gray-400 text-[8px]">Sourdough Loaf Box</span>
+                                        </div>
+                                        <span class="bg-[#D7F3D9] text-[#076526] px-1.5 py-0.5 rounded-full font-bold text-[8px]">Siap Diambil</span>
+                                    </div>
+                                    <div class="p-1.5 rounded-lg border border-gray-200 bg-white flex justify-between items-center">
+                                        <div>
+                                            <strong class="block text-gray-800 text-[9px]">#SB-9280B</strong>
+                                            <span class="text-gray-400 text-[8px]">Croissant Mystery</span>
+                                        </div>
+                                        <span class="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full font-bold text-[8px]">Selesai</span>
+                                    </div>
+                                </div>
+
+                                <!-- Detail Pesanan Kanan -->
+                                <div class="col-span-5 border border-gray-100 rounded-xl p-2 bg-white flex flex-col justify-between">
+                                    <div>
+                                        <div class="flex justify-between items-center mb-1">
+                                            <strong class="text-[9px] text-gray-800">Detail Pesanan</strong>
+                                            <span class="bg-[#D7F3D9] text-[#076526] px-1.5 py-0.5 rounded-full font-bold text-[7px]">Siap</span>
+                                        </div>
+                                        <p class="m-0 text-[8px] text-gray-400">Produk: <strong class="text-gray-700">Roti Artisan</strong></p>
+                                        <p class="m-0 text-[8px] text-gray-400">Total: <strong class="text-gray-700">Rp 25.000</strong></p>
+                                    </div>
+                                    <div class="mt-2 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-[8px] font-bold text-gray-400 border border-dashed border-gray-300">
+                                        QR Validasi Klaim
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3 Orang di Depan Tengah (Tanpa 2 orang transparan di kanan/kiri luar) -->
+                <div class="relative z-20 flex items-end justify-center max-w-2xl mx-auto pt-2">
+                    <!-- 1. Kiri Depan: Pria Memegang HP SisaBijak -->
+                    <img src="{% static 'img/RemajaHP.png' %}"
+                         alt="App User"
+                         class="w-36 sm:w-44 md:w-52 h-auto object-contain object-bottom -mr-8 sm:-mr-12 relative z-20 drop-shadow-lg block">
+
+                    <!-- 2. Tengah Depan (Utama): Chef Bakery Membawa Keranjang Roti -->
+                    <img src="{% static 'img/FotoFinalOrang.png' %}"
+                         alt="Bakery Partner"
+                         onerror="this.style.display='none';"
+                         class="w-44 sm:w-56 md:w-64 h-auto object-contain object-bottom relative z-30 drop-shadow-2xl block">
+
+                    <!-- 3. Kanan Depan: Wanita Berhijab Membawa Paper Bag SisaBijak -->
+                    <img src="{% static 'img/IbuIbuBag.png' %}"
+                         alt="Happy Customer"
+                         class="w-36 sm:w-44 md:w-52 h-auto object-contain object-bottom -ml-8 sm:-ml-12 relative z-20 drop-shadow-lg block">
+                </div>
+            </div>
+
+            <!-- Card Putih Floating di Bawah Orang: 100++ MarketPlace | Foto Bumi | 3.2 Ton CO2 -->
+            <div id="stats-counter-card" class="relative z-30 -mt-8 sm:-mt-10 max-w-3xl mx-auto bg-[#F4F6F3]/95 backdrop-blur-md rounded-[28px] shadow-[0_14px_34px_rgba(0,0,0,0.12)] border border-white px-6 sm:px-10 py-5 grid grid-cols-1 sm:grid-cols-3 items-center gap-4 text-center">
+                <div>
+                    <div class="text-4xl sm:text-5xl font-extrabold text-[#3F6A82] tracking-tight">
+                        <span id="counter-marketplace" data-target="100">100</span>++
+                    </div>
+                    <p class="m-0 mt-1 text-xs sm:text-sm font-medium text-[#526B84]">MarketPlace</p>
+                </div>
+
+                <!-- Foto Bumi Statis Sesuai Figma (Lingkaran rapi tanpa sudut kotak putih) -->
+                <div class="flex justify-center">
+                    <div class="w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden relative flex items-center justify-center select-none shadow-[0_6px_20px_rgba(0,140,255,0.32)] ring-2 ring-[#38BDF8]/40 bg-[#0066CC]">
+                        <img src="{% static 'img/bumi.png' %}"
+                             alt="Bumi SisaBijak"
+                             class="w-full h-full object-cover scale-[1.12] rounded-full block"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+
+                        <!-- Fallback SVG Bumi Biru Figma jika bumi.png tidak ditemukan -->
+                        <svg style="display: none;" viewBox="0 0 160 160" class="w-full h-full" role="img" aria-label="Bumi SisaBijak">
+                            <defs>
+                                <radialGradient id="figmaOceanGrad" cx="42%" cy="38%" r="62%">
+                                    <stop offset="0%" stop-color="#0A95FF" />
+                                    <stop offset="55%" stop-color="#0077E6" />
+                                    <stop offset="88%" stop-color="#0058B8" />
+                                    <stop offset="100%" stop-color="#004494" />
+                                </radialGradient>
+                                <radialGradient id="figmaRimGlow" cx="50%" cy="50%" r="50%">
+                                    <stop offset="86%" stop-color="#00C8FF" stop-opacity="0" />
+                                    <stop offset="96%" stop-color="#00C8FF" stop-opacity="0.65" />
+                                    <stop offset="100%" stop-color="#38BDF8" stop-opacity="0.95" />
+                                </radialGradient>
+                                <clipPath id="globeClip">
+                                    <circle cx="80" cy="80" r="78" />
+                                </clipPath>
+                            </defs>
+                            <circle cx="80" cy="80" r="78" fill="url(#figmaOceanGrad)" />
+                            <g clip-path="url(#globeClip)" fill="#004B9F" opacity="0.85">
+                                <path d="M22,58 C30,44 46,34 65,30 C82,27 98,32 110,42 C117,48 118,57 112,64 C106,70 96,71 89,68 C84,66 80,74 77,81 C73,74 68,67 63,65 C57,63 54,73 50,77 C46,72 43,64 36,63 C29,62 24,64 22,58 Z" />
+                                <path d="M74,78 C77,82 81,88 83,94 C80,96 75,90 72,84 Z" />
+                                <path d="M69,87 C73,91 79,97 82,102 C79,104 72,98 67,91 Z" />
+                                <path d="M83,104 C90,104 98,105 105,106 C104,109 89,108 82,106 Z" />
+                                <path d="M87,89 C92,88 96,92 95,97 C91,99 86,96 87,89 Z" />
+                                <path d="M98,92 C102,91 104,95 101,99 C98,98 97,95 98,92 Z" />
+                                <path d="M109,98 C116,97 124,101 128,105 C124,108 115,105 109,101 Z" />
+                                <path d="M101,74 C104,76 106,81 103,85 C100,83 99,78 101,74 Z" />
+                                <path d="M117,50 C121,53 122,59 118,63 C115,60 115,54 117,50 Z" />
+                                <path d="M95,122 C103,115 116,114 125,119 C132,124 134,134 127,141 C119,147 105,146 97,139 C91,134 90,126 95,122 Z" />
+                            </g>
+                            <circle cx="52" cy="70" r="2.2" fill="#EF4444" />
+                            <circle cx="112" cy="56" r="2.2" fill="#EF4444" />
+                            <circle cx="122" cy="133" r="2.2" fill="#EF4444" />
+                            <circle cx="80" cy="80" r="78" fill="url(#figmaRimGlow)" />
+                        </svg>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="text-4xl sm:text-5xl font-extrabold text-[#3F6A82] tracking-tight">
+                        <span id="counter-co2" data-target="3.2">3.2</span> Ton
+                    </div>
+                    <p class="m-0 mt-1 text-xs sm:text-sm font-medium text-[#526B84]">Total CO2 Emissions Prevented</p>
+                </div>
+            </div>
+
         </div>
     </section>
 
-    {% include 'merchant_loc.html' %}
+    <!-- =========================================================================
+         4. SECTION PETA & MARKETPLACE TERDEKAT (SESUAI WARNA & LAYOUT FIGMA)
+         ========================================================================= -->
+    <section class="bg-gradient-to-b from-[#F8FAF7] via-[#CFE6D2] to-[#98C59F] pt-6 pb-14 px-2 sm:px-4">
+        <div class="reveal-up is-visible">
+            {% include 'merchant_loc.html' %}
+        </div>
+    </section>
+
+    <!-- =========================================================================
+         5. SECTION WANNA SEE ANOTHER PRODUCT? + SISA [IKON INTERAKTIF] BIJAK
+         (Posisi SISA BIJAK diturunkan ke batas bawah sehingga sembunyi sebagian di bawah)
+         ========================================================================= -->
+    <section class="tgtg-peek-section relative overflow-hidden">
+        <!-- Pita Atas Hijau Muda -->
+        <div class="relative z-10 bg-[#95C29B] pt-10 pb-0 px-4 text-center border-t border-[#7FA985]/40 overflow-hidden">
+            <h2 class="reveal-up is-visible m-0 text-3xl sm:text-5xl md:text-[56px] font-black text-white tracking-tight uppercase leading-[0.88] translate-y-[12%] select-none">
+                WANNA SEE ANOTHER PRODUCT ?
+            </h2>
+        </div>
+
+        <!-- Pita Bawah Hijau Tua (SISA [BAG] BIJAK diturunkan ke batas bawah sehingga bagian bawahnya sembunyi seperti TooGoodToGo) -->
+        <div class="relative z-20 bg-[#556957] pt-10 sm:pt-14 pb-0 px-4 overflow-hidden">
+            <div id="tgtg-peek-row" class="tgtg-peek-row max-w-6xl mx-auto flex items-center justify-center gap-5 sm:gap-12 md:gap-16 flex-nowrap">
+                <span class="text-5xl sm:text-8xl md:text-[116px] font-black tracking-[0.06em] text-[#A7D7AF] select-none leading-[0.82]">
+                    SISA
+                </span>
+
+                <!-- Ikon Interaktif Lurus Menuju /catalog/ -->
+                <a href="{% url 'catalog:catalog_list' %}"
+                   title="Lihat Semua Katalog Makanan"
+                   aria-label="Lihat Semua Katalog Makanan"
+                   class="tgtg-bag-cta group relative flex-shrink-0 w-20 h-20 sm:w-28 sm:h-28 md:w-36 md:h-36 rounded-full bg-white flex items-center justify-center shadow-2xl no-underline cursor-pointer">
+                    <svg class="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 text-[#CBD9E6] group-hover:text-[#466D87] transition-colors duration-300" viewBox="0 0 64 64" fill="currentColor">
+                        <path d="M16 18h32l4 34a4 4 0 0 1-4 4H16a4 4 0 0 1-4-4l4-34z"/>
+                        <path d="M20 14h24l4 4H16l4-4z" opacity="0.65"/>
+                        <path d="M25 27a7 7 0 0 0 14 0" fill="none" stroke="#ffffff" stroke-width="3.8" stroke-linecap="round"/>
+                    </svg>
+                </a>
+
+                <span class="text-5xl sm:text-8xl md:text-[116px] font-black tracking-[0.06em] text-[#A7D7AF] select-none leading-[0.82]">
+                    BIJAK
+                </span>
+            </div>
+        </div>
+    </section>
+
 </main>
 {% endblock content %}
 
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="{% static 'js/merchant_loc.js' %}?v=5"></script>
+<script src="{% static 'js/merchant_loc.js' %}?v=8"></script>
 {% endblock extra_js %}

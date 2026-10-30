@@ -17,7 +17,7 @@
     <div class="loc-lists">
 
         <section aria-labelledby="deals-title">
-            <h2 class="loc-heading" id="deals-title">Diskon Hari Ini</h2>
+            <h2 class="loc-heading" id="deals-title">Diskon Teratas Hari Ini</h2>   
             <div class="loc-row loc-row--deals">
                 {% for p in deals %}
                     <article class="deal-card">
@@ -61,7 +61,7 @@
             </div>
 
             <div class="loc-more">
-                <a class="deal-btn" href="/catalog/">View More &rarr;</a>
+                <a class="deal-btn" href="{% url 'catalog:catalog_list' %}" style="width: 100%;">View More</a>
             </div>
         </section>
 

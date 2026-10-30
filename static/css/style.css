@@ -9148,6 +9148,104 @@ body.profile-reference-page main.profile-page section.profile-card .profile-logo
     font-size: 14px;
 }
 
+/* =========================================================
+   LANDING PAGE & MARKETPLACE FIGMA IMPLEMENTATION
+   ========================================================= */
+
+/* Ticker Marquee Loop (Ke Kiri) */
+@keyframes sbMarquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+.sb-marquee-track {
+    animation: sbMarquee 28s linear infinite;
+}
+
+.sb-marquee-track:hover {
+    animation-play-state: paused;
+}
+
+/* Hero Paper Bag Entrance (Tanpa Orbit Panah Berputar) */
+@keyframes riseFromBottom {
+    0% {
+        opacity: 0;
+        transform: translateY(60px) scale(0.95);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.hero-bag-entrance {
+    animation: riseFromBottom 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Masking halus untuk foto orang paling kiri (JPG) agar menyatu dengan background */
+.sb-person-edge-mask {
+    -webkit-mask-image: radial-gradient(ellipse 85% 90% at 50% 45%, #000 68%, transparent 100%);
+    mask-image: radial-gradient(ellipse 85% 90% at 50% 45%, #000 68%, transparent 100%);
+}
+
+/* Animasi Scroll Reveal-Up & Pop-Card */
+.reveal-up {
+    opacity: 0;
+    transform: translateY(36px);
+    transition: opacity 0.75s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal-up.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.pop-card {
+    opacity: 0;
+    transform: scale(0.85) translateY(24px);
+    transition: opacity 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
+                transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.pop-card.is-visible {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+}
+
+/* Ikon Interaktif SISA [BAG] BIJAK */
+/* Ikon Interaktif SISA [BAG] BIJAK (Lurus tanpa rotasi miring) */
+@keyframes bagPulseWiggle {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.tgtg-bag-cta {
+    animation: bagPulseWiggle 3s ease-in-out infinite;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.tgtg-bag-cta:hover {
+    animation: none;
+    transform: scale(1.1);
+    box-shadow: 0 0 0 10px rgba(167, 215, 175, 0.35), 0 20px 35px rgba(0, 0, 0, 0.28);
+}
+
+/* Efek Sembunyi / Peeking SISA [IKON] BIJAK di batas bawah */
+.tgtg-peek-row {
+    transform: translateY(22%);
+    transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+}
+
+.tgtg-peek-row.is-hidden-peek {
+    transform: translateY(65%);
+}
+
+.tgtg-peek-section:hover .tgtg-peek-row {
+    transform: translateY(8%);
+}
+
 /* Responsive layout */
 @media (max-width: 700px) {
     .edit-profile-reference-page .edit-profile-reference-navbar,
