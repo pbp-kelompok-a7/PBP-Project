@@ -819,7 +819,7 @@ def product_view(request):
 @never_cache
 @product_merchant_required
 def product_create(request):
-    form = MerchantProductForm(request.POST or None)
+    form = MerchantProductForm(request.POST or None, request.FILES or None)
     if request.method == "POST" and form.is_valid():
         product = form.save(commit=False)
         product.merchant = request.user
@@ -834,7 +834,7 @@ def product_create(request):
 @product_merchant_required
 def product_update(request, product_id):
     product = get_object_or_404(MerchantProduct, product_id=product_id, merchant=request.user)
-    form = MerchantProductForm(request.POST or None, instance=product)
+    form = MerchantProductForm(request.POST or None, request.FILES or None, instance=product)
     if request.method == "POST" and form.is_valid():
         form.save()
         messages.success(request, "Produk berhasil diperbarui.")
@@ -976,32 +976,5 @@ def edit_profile_view(request): #mengedit profil dan mengubah password
 #CONSUMER PROFILE ORDER HISTORY
 @login_required(login_url="main:login")
 @never_cache
-def order_history_view(request): #menampilkan riwayat pesanan konsumen dan memungkinkan filter status melalui URL
-    user_profile = UserProfile.objects.filter(user=request.user).first()
-    if not user_profile or user_profile.role != UserProfile.Role.CONSUMER:
-        messages.error(request, "Halaman ini khusus konsumen.")
-        return redirect("main:show_main")
-
-    #mengambil semua pesanan milik pengguna
-    orders = OrderSystem.objects.filter(
-        consumer=request.user
-    ).select_related("product").order_by("-created_at")
-    
-    #mengambil dan membalidasi filter
-    selected_status = request.GET.get("status", "")
-    valid_statuses = {
-        value for value, label in OrderSystem.PaymentStatus.choices
-    }
-    if selected_status in valid_statuses:
-        orders = orders.filter(payment_status=selected_status)
-
-    #mengirim data ke template
-    return render(request, "order_history_view.html", {
-        "orders": orders,
-        "selected_status": selected_status,
-        "status_choices": OrderSystem.PaymentStatus.choices,
-    })
-
-
-
-
+def order_history_view(request):
+    return redirect("main:order_list")

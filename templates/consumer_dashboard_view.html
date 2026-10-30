@@ -22,7 +22,7 @@
     </form>
 
     <nav class="dashboard-reference-icons flex shrink-0 flex-row items-center gap-2 max-[640px]:gap-[2px]" aria-label="Quick links">
-        <a class="flex h-[34px] w-[26px] shrink-0 items-center justify-center text-[#171917]" href="{% url 'main:order_history' %}" aria-label="Order history" title="Order history">
+        <a class="flex h-[34px] w-[26px] shrink-0 items-center justify-center text-[#171917]" href="{% url 'main:order_list' %}" aria-label="Order history" title="Order history">
             <svg class="h-[18px] w-[18px] shrink-0" viewBox="0 0 24 24" aria-hidden="true">
                 <rect x="5" y="3" width="14" height="18" rx="2"></rect>
                 <path d="M9 7h6M9 11h6M9 15h4"></path>
@@ -69,7 +69,7 @@
         </div>
 
         <div class="consumer-dashboard-actions flex flex-wrap items-center justify-end gap-[10px] max-[760px]:justify-start">
-            <a class="inline-flex min-h-[36px] items-center justify-center rounded-lg border border-[#40583d] bg-[#40583d] px-[18px] py-[11px] text-[14px] font-semibold leading-[1.2] text-white no-underline transition-colors duration-200 hover:border-[#344b32] hover:bg-[#344b32]" href="{% url 'main:order_history' %}">
+            <a class="inline-flex min-h-[36px] items-center justify-center rounded-lg border border-[#40583d] bg-[#40583d] px-[18px] py-[11px] text-[14px] font-semibold leading-[1.2] text-white no-underline transition-colors duration-200 hover:border-[#344b32] hover:bg-[#344b32]" href="{% url 'main:order_list' %}">
                 Riwayat Pesanan
             </a>
 
@@ -103,18 +103,6 @@
             <span class="text-[14px] font-[650] leading-[1.5] text-[#203820]">Pesanan Selesai</span>
             <strong class="[overflow-wrap:anywhere] text-[14px] font-medium leading-[1.5] text-[#243b24]">{{ consumer_profile.total_orders_completed }}</strong>
         </div>
-    </section>
-
-    <section class="consumer-dashboard-stats mb-7 grid grid-cols-2 gap-4 max-[640px]:grid-cols-1 max-[520px]:gap-3" aria-label="Statistik kontribusi">
-        <article class="consumer-stat-card min-h-[100px] min-w-0 rounded-lg border border-[#dedede] bg-white px-6 py-[22px] max-[520px]:p-[18px]">
-            <p class="mb-3 text-[17px] leading-[1.5] text-[#252525]">Total Uang Dihemat</p>
-            <h2 class="m-0 [overflow-wrap:anywhere] text-xl font-bold leading-[1.5] text-[#111]">Rp{{ consumer_profile.total_money_saved|floatformat:0 }}</h2>
-        </article>
-
-        <article class="consumer-stat-card min-h-[100px] min-w-0 rounded-lg border border-[#dedede] bg-white px-6 py-[22px] max-[520px]:p-[18px]">
-            <p class="mb-3 text-[17px] leading-[1.5] text-[#252525]">Total Emisi Karbon Dicegah</p>
-            <h2 class="m-0 [overflow-wrap:anywhere] text-xl font-bold leading-[1.5] text-[#111]">{{ consumer_profile.total_co2_prevented }} kg CO₂</h2>
-        </article>
     </section>
 
     <section class="consumer-dashboard-settings flex min-h-[82px] items-center justify-between gap-5 rounded-[14px] bg-[linear-gradient(105deg,#8eb392_0%,#b6d2b6_58%,#e5efe3_100%)] px-[26px] py-5 max-[520px]:items-start max-[520px]:flex-col max-[520px]:gap-4 max-[520px]:p-5">

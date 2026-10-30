@@ -94,9 +94,16 @@ class Command(BaseCommand):
             self.bikin_order_demo(options["demo_consumer"])
 
     def pasang_foto(self, produk):
-        # kalau produk udah punya foto (misal diupload merchant), ga usah ditimpa
+        # Jika produk punya foto DAN file fisiknya benar-benar ada di storage, jangan timpa
         if produk.product_photo:
-            return False
+            try:
+                if produk.product_photo.storage.exists(produk.product_photo.name):
+                    return False
+            except Exception:
+                pass
+
+        # Jika file fisiknya belum ada (misal setelah redeploy container baru),
+        # salin ulang foto dari catalog/data/foto/
         nama = slugify(produk.product_name)
         for ext in FOTO_EXT:
             path = FOTO_DIR / f"{nama}{ext}"
@@ -104,7 +111,6 @@ class Command(BaseCommand):
                 with open(path, "rb") as f:
                     produk.product_photo.save(f"{nama}{ext}", File(f), save=True)
                 return True
-        # fotonya belum ada, produk tetep ke-seed tanpa foto
         return False
 
     def ambil_merchant(self, nama_toko):
