@@ -819,7 +819,7 @@ def product_view(request):
 @never_cache
 @product_merchant_required
 def product_create(request):
-    form = MerchantProductForm(request.POST or None)
+    form = MerchantProductForm(request.POST or None, request.FILES or None)
     if request.method == "POST" and form.is_valid():
         product = form.save(commit=False)
         product.merchant = request.user
@@ -834,7 +834,7 @@ def product_create(request):
 @product_merchant_required
 def product_update(request, product_id):
     product = get_object_or_404(MerchantProduct, product_id=product_id, merchant=request.user)
-    form = MerchantProductForm(request.POST or None, instance=product)
+    form = MerchantProductForm(request.POST or None, request.FILES or None, instance=product)
     if request.method == "POST" and form.is_valid():
         form.save()
         messages.success(request, "Produk berhasil diperbarui.")
