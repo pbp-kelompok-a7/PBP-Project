@@ -27,7 +27,9 @@ urlpatterns = [
     path("api/v1/auth/user/", views.api_account_profile, name="api_v1_user"),
     path("merchants/locations/", views.merchant_location_list, name="merchant-location-list"),
     path("merchants/locations/<str:id_merchant>/", views.merchant_location_detail, name="merchant-location-detail"),
-
+    path("landing/", views.landing_data, name="landing-data"),
+    path("landing/daily-deals/", views.landing_daily_deals, name="landing-daily-deals"),
+    
     #ConsumerProfile
     path( #untuk mengedit profil dan mengubah password konsumen
         "consumer/edit-profile/",

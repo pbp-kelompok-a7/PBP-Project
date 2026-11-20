@@ -46,6 +46,7 @@ from .serializers import (
     UserSerializer,
     get_user_role,
     MerchantLocationSerializer,
+    DailyDealSerializer,
 )
 
 from django.views.decorators.http import (
@@ -1264,6 +1265,58 @@ def merchant_location_detail(request, id_merchant):
     location = get_object_or_404(MerchantLocationIntegrator, id_merchant=id_merchant)
     serializer = MerchantLocationSerializer(location)
     return Response(serializer.data)
+
+def _get_top_daily_deals(limit=None):
+    """Mengambil produk tersedia dengan persentase diskon tertinggi."""
+    available_products = MerchantProduct.objects.filter(product_stock__gt=0)
+    serializer = DailyDealSerializer(available_products, many=True)
+    sorted_deals = sorted(
+        serializer.data,
+        key=lambda item: item["discount_percentage"],
+        reverse=True,
+    )
+    return sorted_deals[:limit] if limit else sorted_deals
+
+
+def _detect_user_role(user):
+    """Mendeteksi role pengguna untuk pengaturan Bottom Navigation / Drawer Flutter."""
+    if not user or not user.is_authenticated:
+        return "guest"
+    if user.is_superuser or user.is_staff:
+        return "admin"
+    profile = getattr(user, "profile", None)
+    return getattr(profile, "role", "consumer")
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def landing_data(request):
+    """Endpoint utama halaman Landing Page & konfigurasi Base Platform."""
+    daily_deals = _get_top_daily_deals(limit=6)
+    nearby_qs = MerchantLocationIntegrator.objects.all()[:5]
+    nearby_merchants = MerchantLocationSerializer(nearby_qs, many=True).data
+
+    total_available_items = MerchantProduct.objects.filter(product_stock__gt=0).count()
+    total_merchants = MerchantLocationIntegrator.objects.count()
+
+    return Response({
+        "user_role": _detect_user_role(request.user),
+        "is_authenticated": bool(request.user and request.user.is_authenticated),
+        "daily_deals": daily_deals,
+        "nearby_merchants": nearby_merchants,
+        "environment_stats": {
+            "available_packages": total_available_items,
+            "active_merchants": total_merchants,
+            "estimated_co2_saved_kg": round(total_available_items * 2.5, 1),
+        },
+    })
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def landing_daily_deals(request):
+    """Endpoint khusus daftar seluruh Daily Deals berdiskon tertinggi."""
+    return Response(_get_top_daily_deals())
 
 #CONSUMER PROFILE ORDER HISTORY
 @login_required(login_url="main:login")

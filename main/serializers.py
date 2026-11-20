@@ -2,7 +2,7 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 
 from .decorators import is_merchant
-from .models import ConsumerProfile, UserProfile, MerchantLocationIntegrator
+from .models import ConsumerProfile, UserProfile, MerchantLocationIntegrator, MerchantProduct
 
 
 def get_user_role(user):
@@ -81,6 +81,37 @@ class MerchantLocationSerializer(serializers.ModelSerializer):
             "latitude",
             "longitude",
         ]
+
+class DailyDealSerializer(serializers.ModelSerializer):
+    merchant_name = serializers.SerializerMethodField()
+    discount_percentage = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MerchantProduct
+        fields = [
+            "id",
+            "product_name",
+            "merchant_name",
+            "original_price",
+            "discounted_price",
+            "discount_percentage",
+            "product_stock",
+            "address",
+        ]
+
+    def get_merchant_name(self, obj):
+        if getattr(obj, "merchant_name", None):
+            return obj.merchant_name
+        if getattr(obj, "merchant", None):
+            return obj.merchant.first_name or obj.merchant.username
+        return "Mitra SisaBijak"
+
+    def get_discount_percentage(self, obj):
+        orig = getattr(obj, "original_price", 0) or 0
+        disc = getattr(obj, "discounted_price", 0) or 0
+        if orig > 0 and orig >= disc:
+            return round(((orig - disc) / orig) * 100)
+        return 0
 
 
 class LoginSerializer(serializers.Serializer):
