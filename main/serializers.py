@@ -2,7 +2,7 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 
 from .decorators import is_merchant
-from .models import ConsumerProfile, UserProfile
+from .models import ConsumerProfile, UserProfile, MerchantLocationIntegrator
 
 
 def get_user_role(user):
@@ -67,6 +67,20 @@ class RegisterSerializer(serializers.Serializer):
         UserProfile.objects.get_or_create(user=user, defaults={"role": UserProfile.Role.CONSUMER})
         ConsumerProfile.objects.get_or_create(user=user)
         return user
+    
+class MerchantLocationSerializer(serializers.ModelSerializer):
+    latitude = serializers.FloatField()
+    longitude = serializers.FloatField()
+
+    class Meta:
+        model = MerchantLocationIntegrator
+        fields = [
+            "id_merchant",
+            "name_merchant",
+            "address",
+            "latitude",
+            "longitude",
+        ]
 
 
 class LoginSerializer(serializers.Serializer):

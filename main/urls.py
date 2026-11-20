@@ -1,7 +1,7 @@
 
 from django.urls import path
 
-from . import views
+from .import views
 
 
 app_name = "main"
@@ -25,6 +25,8 @@ urlpatterns = [
     path("api/v1/auth/register/", views.api_register, name="api_v1_register"),
     path("api/v1/auth/logout/", views.api_logout, name="api_v1_logout"),
     path("api/v1/auth/user/", views.api_account_profile, name="api_v1_user"),
+    path("merchants/locations/", views.merchant_location_list, name="merchant-location-list"),
+    path("merchants/locations/<str:id_merchant>/", views.merchant_location_detail, name="merchant-location-detail"),
 
     #ConsumerProfile
     path( #untuk mengedit profil dan mengubah password konsumen
@@ -111,4 +113,6 @@ urlpatterns = [
         views.merchant_location,
         name="merchant_location",
     ),
+
+    path("api/merchants/locations/", views.get_merchant_locations_json, name="get_merchant_locations_json"),
 ]

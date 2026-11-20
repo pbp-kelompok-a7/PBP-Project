@@ -39,11 +39,13 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
+
 from .serializers import (
     LoginSerializer,
     RegisterSerializer,
     UserSerializer,
     get_user_role,
+    MerchantLocationSerializer,
 )
 
 from django.views.decorators.http import (
@@ -1188,6 +1190,80 @@ def edit_profile_view(request): #mengedit profil dan mengubah password
         "profile_form": profile_form,
         "password_form": password_form,
     })
+
+## Merchant-locations
+@require_GET
+def get_merchant_locations_json(request):
+    query = request.GET.get("q", "").strip()
+    merchants_qs = MerchantLocationIntegrator.objects.all()
+
+    if query:
+        merchants_qs = merchants_qs.filter(
+            Q(name_merchant__icontains=query) | Q(address__icontains=query)
+        )
+
+    merchants_data = [
+        {
+            "id_merchant": str(m.id_merchant),
+            "name_merchant": m.name_merchant,
+            "address": m.address,
+            "latitude": float(m.latitude),
+            "longitude": float(m.longitude),
+        }
+        for m in merchants_qs
+        if m.latitude is not None and m.longitude is not None
+    ]
+
+    if not merchants_data:
+        products_qs = MerchantProduct.objects.select_related("merchant").all()
+        if query:
+            products_qs = products_qs.filter(
+                Q(merchant__first_name__icontains=query)
+                | Q(merchant__username__icontains=query)
+                | Q(address__icontains=query)
+            )
+
+        seen_merchants = set()
+        for idx, p in enumerate(products_qs):
+            m_name = getattr(p, "merchant_name", None) or p.merchant.first_name or p.merchant.username
+            addr = getattr(p, "address", "")
+            unique_key = f"{m_name}_{addr}"
+
+            if unique_key not in seen_merchants:
+                seen_merchants.add(unique_key)
+                merchants_data.append({
+                    "id_merchant": f"m-{idx + 1}",
+                    "name_merchant": m_name,
+                    "address": addr,
+                    "latitude": -6.3727 + (idx * 0.002),
+                    "longitude": 106.8267 + (idx * 0.002),
+                })
+
+    return JsonResponse(merchants_data, safe=False)
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def merchant_location_list(request):
+    """Mengembalikan daftar koordinat merchant mitra, mendukung filter ?q=."""
+    query = request.query_params.get("q", "").strip()
+    locations = MerchantLocationIntegrator.objects.all()
+
+    if query:
+        locations = locations.filter(
+            Q(name_merchant__icontains=query) | Q(address__icontains=query)
+        )
+
+    serializer = MerchantLocationSerializer(locations, many=True)
+    return Response(serializer.data)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def merchant_location_detail(request, id_merchant):
+    """Mengembalikan detail koordinat dan alamat satu merchant berdasarkan id_merchant."""
+    location = get_object_or_404(MerchantLocationIntegrator, id_merchant=id_merchant)
+    serializer = MerchantLocationSerializer(location)
+    return Response(serializer.data)
 
 #CONSUMER PROFILE ORDER HISTORY
 @login_required(login_url="main:login")
