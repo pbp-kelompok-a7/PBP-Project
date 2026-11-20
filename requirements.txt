@@ -5,3 +5,4 @@ python-dotenv
 whitenoise
 qrcode[png]>=8.2,<9
 djangorestframework
+django-cors-headers

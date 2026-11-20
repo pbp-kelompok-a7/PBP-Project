@@ -1,5 +1,6 @@
 import base64
 import hmac
+import json
 import zlib
 from datetime import timedelta
 from decimal import Decimal
@@ -12,7 +13,7 @@ except ImportError:
     PyPNGImage = None
 
 from django.contrib import messages
-from django.contrib.auth import login, logout, update_session_auth_hash
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.forms import (
     AuthenticationForm,
@@ -29,8 +30,21 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q, ProtectedError
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
+
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+
+from .serializers import (
+    LoginSerializer,
+    RegisterSerializer,
+    UserSerializer,
+    get_user_role,
+)
 
 from django.views.decorators.http import (
     require_GET,
@@ -116,31 +130,222 @@ def show_main(request):
     return render(request, "index.html", context)
 
 
-def register(request):
-    form = UserCreationForm(request.POST or None)
+def _is_api_request(request):
+    """Mendeteksi apakah request berasal dari klien API/Mobile (bukan web form biasa)."""
+    content_type = request.content_type or ""
+    accept = request.headers.get("Accept", "")
+    return (
+        "application/json" in content_type
+        or "application/json" in accept
+        or request.path.startswith("/auth/")
+        or request.path.startswith("/api/")
+        or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+    )
 
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        messages.success(request, "Akun berhasil dibuat. Silakan login.")
-        return redirect("main:login")
 
-    return render(request, "register.html", {"form": form})
+# ================= API AUTH (DRF) =================
 
+@csrf_exempt
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def api_login(request):
+    """
+    Endpoint DRF untuk autentikasi mobile:
+    Menerima JSON: {"username": "...", "password": "..."} atau Form data.
+    """
+    data = request.data if hasattr(request, "data") else {}
+    if not data and request.body:
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            data = {}
+    if not data and request.POST:
+        data = request.POST
 
-@never_cache
-def login_user(request):
-    form = AuthenticationForm(request, data=request.POST or None)
+    username = str(data.get("username", "")).strip()
+    password = str(data.get("password", ""))
 
-    if request.method == "POST" and form.is_valid():
-        user = form.get_user()
+    if not username or not password:
+        return Response(
+            {
+                "status": False,
+                "message": "Username dan password wajib diisi.",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user = authenticate(request, username=username, password=password)
+    if user is not None:
         login(request, user)
-        destination = "main:product_view" if _is_merchant(user) else "main:show_main"
-        response = redirect(destination)
+        role = get_user_role(user)
+        response_data = {
+            "status": True,
+            "message": f"Selamat datang, {user.username}!",
+            "username": user.username,
+            "role": role,
+            "user": UserSerializer(user).data,
+        }
+        response = Response(response_data, status=status.HTTP_200_OK)
         response.set_cookie(
             "last_login",
             timezone.localtime().strftime("%Y-%m-%d %H:%M:%S"),
         )
         return response
+    else:
+        return Response(
+            {
+                "status": False,
+                "message": "Username atau password salah.",
+            },
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+
+@csrf_exempt
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def api_register(request):
+    """
+    Endpoint DRF untuk registrasi Consumer dari aplikasi mobile:
+    Menerima JSON: {"username": "...", "password": "...", "password_confirm": "...", "email": "..."}
+    """
+    data = request.data if hasattr(request, "data") else {}
+    if not data and request.body:
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            data = {}
+    if not data and request.POST:
+        data = request.POST
+
+    serializer = RegisterSerializer(data=data)
+    if serializer.is_valid():
+        user = serializer.save()
+        return Response(
+            {
+                "status": True,
+                "message": "Akun berhasil dibuat. Silakan login.",
+                "username": user.username,
+                "role": "consumer",
+                "user": UserSerializer(user).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    # Ambil pesan error yang ramah pengguna
+    first_error = "Registrasi gagal."
+    for field, errors in serializer.errors.items():
+        if isinstance(errors, list) and errors:
+            first_error = f"{errors[0]}"
+            break
+        elif isinstance(errors, str):
+            first_error = f"{errors}"
+            break
+
+    return Response(
+        {
+            "status": False,
+            "message": first_error,
+            "errors": serializer.errors,
+        },
+        status=status.HTTP_400_BAD_REQUEST,
+    )
+
+
+@csrf_exempt
+@api_view(["POST", "GET"])
+@permission_classes([AllowAny])
+def api_logout(request):
+    """Endpoint DRF untuk logout pengguna."""
+    if request.user.is_authenticated:
+        logout(request)
+        response = Response(
+            {
+                "status": True,
+                "message": "Logout berhasil!",
+            },
+            status=status.HTTP_200_OK,
+        )
+        response.delete_cookie("last_login")
+        return response
+    return Response(
+        {
+            "status": True,
+            "message": "Sudah dalam status logout.",
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@csrf_exempt
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def api_account_profile(request):
+    """Endpoint DRF untuk cek status sesi & profil pengguna (whoami)."""
+    if request.user.is_authenticated:
+        role = get_user_role(request.user)
+        return Response(
+            {
+                "status": True,
+                "is_authenticated": True,
+                "role": role,
+                "username": request.user.username,
+                "user": UserSerializer(request.user).data,
+            },
+            status=status.HTTP_200_OK,
+        )
+    return Response(
+        {
+            "status": False,
+            "is_authenticated": False,
+            "role": "guest",
+            "message": "Pengguna belum login.",
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+# ================= WEB & HYBRID AUTH VIEWS =================
+
+@csrf_exempt
+def register(request):
+    if request.method == "POST":
+        if _is_api_request(request) or "csrfmiddlewaretoken" not in request.POST:
+            return api_register(request)
+
+        form = UserCreationForm(request.POST or None)
+        if form.is_valid():
+            user = form.save()
+            UserProfile.objects.get_or_create(user=user, defaults={"role": UserProfile.Role.CONSUMER})
+            ConsumerProfile.objects.get_or_create(user=user)
+            messages.success(request, "Akun berhasil dibuat. Silakan login.")
+            return redirect("main:login")
+    else:
+        form = UserCreationForm()
+
+    return render(request, "register.html", {"form": form})
+
+
+@csrf_exempt
+@never_cache
+def login_user(request):
+    if request.method == "POST":
+        if _is_api_request(request) or "csrfmiddlewaretoken" not in request.POST:
+            return api_login(request)
+
+        form = AuthenticationForm(request, data=request.POST or None)
+        if form.is_valid():
+            user = form.get_user()
+            login(request, user)
+            destination = "main:product_view" if _is_merchant(user) else "main:show_main"
+            response = redirect(destination)
+            response.set_cookie(
+                "last_login",
+                timezone.localtime().strftime("%Y-%m-%d %H:%M:%S"),
+            )
+            return response
+    else:
+        form = AuthenticationForm(request)
 
     return render(request, "login.html", {"form": form})
 
@@ -157,13 +362,24 @@ def profile(request):
 
     return render(request, "profile.html")
 
+
+@csrf_exempt
 def account_profile_view(request):
+    if _is_api_request(request):
+        return api_account_profile(request)
+
     if not request.user.is_authenticated:
         return redirect("main:login")
 
     return render(request, "profile.html")
+
+
+@csrf_exempt
 @never_cache
 def logout_user(request):
+    if _is_api_request(request):
+        return api_logout(request)
+
     if request.method == "POST":
         logout(request)
         response = redirect("main:show_main")

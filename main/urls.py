@@ -15,6 +15,17 @@ urlpatterns = [
     path("account-profile/", views.account_profile_view, name="account_profile"),   
     path("logout/", views.logout_user, name="logout"),
 
+    # Dedicated DRF API Auth endpoints
+    path("auth/login/", views.api_login, name="api_login"),
+    path("auth/register/", views.api_register, name="api_register"),
+    path("auth/logout/", views.api_logout, name="api_logout"),
+    path("auth/account-profile/", views.api_account_profile, name="api_account_profile"),
+    path("auth/whoami/", views.api_account_profile, name="api_whoami"),
+    path("api/v1/auth/login/", views.api_login, name="api_v1_login"),
+    path("api/v1/auth/register/", views.api_register, name="api_v1_register"),
+    path("api/v1/auth/logout/", views.api_logout, name="api_v1_logout"),
+    path("api/v1/auth/user/", views.api_account_profile, name="api_v1_user"),
+
     #ConsumerProfile
     path( #untuk mengedit profil dan mengubah password konsumen
         "consumer/edit-profile/",
