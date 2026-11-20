@@ -117,3 +117,52 @@ class DailyDealSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
+
+
+class MerchantProductSerializer(serializers.ModelSerializer):
+    merchant_name = serializers.SerializerMethodField()
+    address = serializers.SerializerMethodField()
+    discount_price = serializers.SerializerMethodField()
+    photo_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MerchantProduct
+        fields = [
+            "product_id",
+            "product_name",
+            "merchant_name",
+            "address",
+            "product_stock",
+            "product_status",
+            "real_price",
+            "discount_rate",
+            "discount_price",
+            "start_pickup",
+            "end_pickup",
+            "photo_url",
+            "created_at",
+        ]
+        read_only_fields = ["product_id", "created_at"]
+
+    def get_merchant_name(self, obj):
+        return obj.merchant_name
+
+    def get_address(self, obj):
+        return obj.pickup_address
+
+    def get_discount_price(self, obj):
+        try:
+            return int(round(obj.discount_price))
+        except Exception:
+            return 0
+
+    def get_photo_url(self, obj):
+        try:
+            url = obj.photo_url
+            request = self.context.get("request")
+            if url and url.startswith("/") and request is not None:
+                return request.build_absolute_uri(url)
+            return url or ""
+        except Exception:
+            return ""
+

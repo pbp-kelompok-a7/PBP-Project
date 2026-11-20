@@ -109,6 +109,19 @@ urlpatterns = [
         name="product_delete",
     ),
 
+    # Dedicated DRF API for Merchant Products
+    path("api/v1/merchant/products/", views.api_merchant_product_list, name="api_merchant_product_list"),
+    path("api/v1/merchant/products/create/", views.api_merchant_product_create, name="api_merchant_product_create"),
+    path("api/v1/merchant/products/<str:product_id>/", views.api_merchant_product_detail, name="api_merchant_product_detail"),
+    path("api/v1/merchant/products/<str:product_id>/edit/", views.api_merchant_product_update, name="api_merchant_product_update"),
+    path("api/v1/merchant/products/<str:product_id>/delete/", views.api_merchant_product_delete, name="api_merchant_product_delete"),
+
+    # Fallback JSON endpoints for mobile integration
+    path("merchant/products/json/", views.api_merchant_product_list, name="api_merchant_product_list_json"),
+    path("merchant/products/create/json/", views.api_merchant_product_create, name="api_merchant_product_create_json"),
+    path("merchant/products/<str:product_id>/edit/json/", views.api_merchant_product_update, name="api_merchant_product_update_json"),
+    path("merchant/products/<str:product_id>/delete/json/", views.api_merchant_product_delete, name="api_merchant_product_delete_json"),
+
     # Merchant location integrator (PR #24)
     path(
         "maps/",

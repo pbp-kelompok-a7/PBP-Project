@@ -35,9 +35,10 @@ from django.db.models import Q, ProtectedError
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from catalog.permissions import CsrfExemptSessionAuthentication
 
 
 from .serializers import (
@@ -47,6 +48,7 @@ from .serializers import (
     get_user_role,
     MerchantLocationSerializer,
     DailyDealSerializer,
+    MerchantProductSerializer,
 )
 
 from django.views.decorators.http import (
@@ -1074,6 +1076,265 @@ def product_delete(request, product_id):
             product.save(update_fields=["product_status"])
             messages.info(request, "Produk sudah punya pesanan, jadi dinonaktifkan (tidak dihapus).")
     return redirect("main:product_view")
+
+
+# ================= DRF API FOR MERCHANT PRODUCTS =================
+
+@csrf_exempt
+@api_view(["GET"])
+@authentication_classes([CsrfExemptSessionAuthentication])
+@permission_classes([AllowAny])
+def api_merchant_product_list(request):
+    """
+    Endpoint DRF untuk mengambil daftar produk merchant (JSON).
+    Mendukung filter:
+    - ?status=available|sold_out|inactive
+    - ?q=keyword
+    - ?merchant_id=id_merchant (opsional jika tidak dalam session login)
+    """
+    user = request.user
+    if user and user.is_authenticated and is_merchant(user):
+        products = MerchantProduct.objects.filter(merchant=user)
+    elif request.query_params.get("merchant_id"):
+        products = MerchantProduct.objects.filter(merchant_id=request.query_params.get("merchant_id"))
+    elif request.query_params.get("merchant_username"):
+        products = MerchantProduct.objects.filter(merchant__username=request.query_params.get("merchant_username"))
+    else:
+        products = MerchantProduct.objects.all()
+
+    status_filter = request.query_params.get("status")
+    if status_filter and status_filter.lower() != "all":
+        products = products.filter(product_status=status_filter.lower())
+
+    keyword = request.query_params.get("q", "").strip()
+    if keyword:
+        products = products.filter(product_name__icontains=keyword)
+
+    serializer = MerchantProductSerializer(products, many=True, context={"request": request})
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@csrf_exempt
+@api_view(["GET"])
+@authentication_classes([CsrfExemptSessionAuthentication])
+@permission_classes([AllowAny])
+def api_merchant_product_detail(request, product_id):
+    """Endpoint DRF untuk mendapatkan rincian produk tunggal merchant."""
+    product = get_object_or_404(MerchantProduct, product_id=product_id)
+    serializer = MerchantProductSerializer(product, context={"request": request})
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@csrf_exempt
+@api_view(["POST"])
+@authentication_classes([CsrfExemptSessionAuthentication])
+@permission_classes([AllowAny])
+def api_merchant_product_create(request):
+    """
+    Endpoint DRF untuk menambahkan produk makanan surplus baru dari aplikasi mobile.
+    Menerima body berupa JSON atau multipart form data.
+    """
+    data = request.data if hasattr(request, "data") else {}
+    if not data and request.body:
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            data = {}
+    if not data and request.POST:
+        data = request.POST
+
+    user = request.user
+    if not (user and user.is_authenticated and is_merchant(user)):
+        user = User.objects.filter(profile__role=UserProfile.Role.MERCHANT).first() or User.objects.first()
+
+    name = str(data.get("product_name", "")).strip()
+    if not name:
+        return Response(
+            {"status": False, "message": "Nama produk wajib diisi."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        real_price = Decimal(str(data.get("real_price", "0")))
+        if real_price <= 0:
+            return Response(
+                {"status": False, "message": "Harga asli harus lebih besar dari 0."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+    except Exception:
+        return Response(
+            {"status": False, "message": "Format harga asli tidak valid."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        discount_rate = Decimal(str(data.get("discount_rate", "0")))
+        if discount_rate < 0 or discount_rate > 100:
+            return Response(
+                {"status": False, "message": "Diskon harus bernilai antara 0% dan 100%."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+    except Exception:
+        discount_rate = Decimal("0")
+
+    try:
+        stock = int(data.get("product_stock", 0))
+        if stock < 0:
+            stock = 0
+    except Exception:
+        stock = 0
+
+    product_status = str(data.get("product_status", MerchantProduct.Status.AVAILABLE)).lower()
+    if product_status not in [choice[0] for choice in MerchantProduct.Status.choices]:
+        product_status = MerchantProduct.Status.AVAILABLE
+
+    start_pickup = data.get("start_pickup")
+    end_pickup = data.get("end_pickup")
+
+    if not start_pickup:
+        start_pickup = timezone.now()
+    if not end_pickup:
+        end_pickup = timezone.now() + timezone.timedelta(hours=3)
+
+    address = str(data.get("address", "")).strip()
+    product_photo = request.FILES.get("product_photo")
+
+    try:
+        product = MerchantProduct.objects.create(
+            merchant=user,
+            product_name=name,
+            product_stock=stock,
+            product_status=product_status,
+            real_price=real_price,
+            discount_rate=discount_rate,
+            start_pickup=start_pickup,
+            end_pickup=end_pickup,
+            address=address,
+            product_photo=product_photo,
+        )
+        serializer = MerchantProductSerializer(product, context={"request": request})
+        return Response(
+            {
+                "status": True,
+                "message": "Produk berhasil diunggah.",
+                "data": serializer.data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+    except Exception as e:
+        return Response(
+            {"status": False, "message": f"Gagal membuat produk: {str(e)}"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+@csrf_exempt
+@api_view(["POST", "PUT", "PATCH"])
+@authentication_classes([CsrfExemptSessionAuthentication])
+@permission_classes([AllowAny])
+def api_merchant_product_update(request, product_id):
+    """
+    Endpoint DRF untuk memperbarui rincian produk merchant dari aplikasi mobile.
+    """
+    product = get_object_or_404(MerchantProduct, product_id=product_id)
+
+    data = request.data if hasattr(request, "data") else {}
+    if not data and request.body:
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            data = {}
+    if not data and request.POST:
+        data = request.POST
+
+    if "product_name" in data and str(data["product_name"]).strip():
+        product.product_name = str(data["product_name"]).strip()
+
+    if "product_stock" in data:
+        try:
+            val = int(data["product_stock"])
+            if val >= 0:
+                product.product_stock = val
+        except Exception:
+            pass
+
+    if "product_status" in data:
+        st = str(data["product_status"]).lower()
+        if st in [choice[0] for choice in MerchantProduct.Status.choices]:
+            product.product_status = st
+
+    if "real_price" in data:
+        try:
+            rp = Decimal(str(data["real_price"]))
+            if rp > 0:
+                product.real_price = rp
+        except Exception:
+            pass
+
+    if "discount_rate" in data:
+        try:
+            dr = Decimal(str(data["discount_rate"]))
+            if 0 <= dr <= 100:
+                product.discount_rate = dr
+        except Exception:
+            pass
+
+    if "start_pickup" in data and data["start_pickup"]:
+        product.start_pickup = data["start_pickup"]
+
+    if "end_pickup" in data and data["end_pickup"]:
+        product.end_pickup = data["end_pickup"]
+
+    if "address" in data:
+        product.address = str(data["address"]).strip()
+
+    if request.FILES.get("product_photo"):
+        product.product_photo = request.FILES["product_photo"]
+
+    try:
+        product.save()
+        serializer = MerchantProductSerializer(product, context={"request": request})
+        return Response(
+            {
+                "status": True,
+                "message": "Produk berhasil diperbarui.",
+                "data": serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )
+    except Exception as e:
+        return Response(
+            {"status": False, "message": f"Gagal memperbarui produk: {str(e)}"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+@csrf_exempt
+@api_view(["POST", "DELETE"])
+@authentication_classes([CsrfExemptSessionAuthentication])
+@permission_classes([AllowAny])
+def api_merchant_product_delete(request, product_id):
+    """
+    Endpoint DRF untuk menghapus atau menonaktifkan produk merchant dari aplikasi mobile.
+    """
+    product = get_object_or_404(MerchantProduct, product_id=product_id)
+    try:
+        product.delete()
+        return Response(
+            {"status": True, "message": "Produk berhasil dihapus."},
+            status=status.HTTP_200_OK,
+        )
+    except ProtectedError:
+        product.product_status = MerchantProduct.Status.INACTIVE
+        product.save(update_fields=["product_status"])
+        return Response(
+            {
+                "status": True,
+                "message": "Produk sudah memiliki riwayat pesanan, status dialihkan menjadi nonaktif.",
+            },
+            status=status.HTTP_200_OK,
+        )
+
 
 
 #Fitur Merchant Location Integrator
